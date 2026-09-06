@@ -4,13 +4,14 @@ QueryLens is a desktop application for analyzing SQL queries and helping users i
 
 The application will let a user connect to a supported database, submit a SQL query, measure its execution time, inspect its structure, and receive clear optimization recommendations. Analysis results and performance history are stored in SQLite so that performance changes can be reviewed over time.
 
-## Main Goals
+## Current Features
 
-- Identify the query type, referenced tables, joins, conditions, and a simple complexity score.
-- Measure query execution time and flag slow queries.
-- Detect common issues such as `SELECT *`, frequently filtered non-indexed columns, inefficient joins, and repeated expensive queries.
-- Recommend improvements, including possible `CREATE INDEX` statements.
-- Maintain query history and provide dashboard/report views for performance comparison.
+- Execute SQLite queries and display up to 100 returned rows.
+- Identify query type, referenced tables, joins, `WHERE` clauses, filtered columns, and a simple complexity score.
+- Measure execution time and flag queries at or above 500 ms as slow.
+- Create recommendations for `SELECT *`, joins, and frequently filtered columns.
+- Persist database paths, query history, analysis results, recommendations, and index information in a separate SQLite history database.
+- Show recent execution history and a small performance report with total, average, and slow-query counts.
 - Display a simplified query-plan flow, such as `Scan → Filter → Join → Output`.
 
 ## Typical Workflow
@@ -43,15 +44,10 @@ The project aims to apply patterns only where they solve a real design or mainta
 
 | Pattern | Intended responsibility in QueryLens |
 | --- | --- |
-| **Strategy** | Encapsulate independent optimization rules, such as detecting `SELECT *`, missing indexes, inefficient joins, and repeated expensive queries. New rules can be added without changing the main analysis service. |
-| **Factory Method** | Create the appropriate query analyzer for a query type, such as `SELECT`, `INSERT`, or `UPDATE`. |
-| **Facade** | Provide one simple service entry point that coordinates execution, timing, analysis, recommendation generation, persistence, and UI updates. |
-| **Observer** | Notify independent components—dashboard, history logger, and report generator—when a query analysis is completed. |
-| **Chain of Responsibility** | Run the analysis as an ordered series of focused checks: validation, complexity, joins, index usage, and recommendations. |
-| **Builder** | Assemble a complete `QueryAnalysisResult`, whose optional data may include tables, joins, timing metrics, query-plan steps, risk level, and recommendations. |
-| **Command** | Represent user actions such as executing a query, applying a safe test index, or exporting a report. This also provides a foundation for action history. |
-| **Adapter** | Isolate database-specific query-plan behavior. The initial version targets SQLite, while future adapters could support MySQL or PostgreSQL. |
-| **Repository** | Separate SQLite persistence code from business logic through repositories for query history, recommendations, database connections, and index information. |
+| **Strategy** | Implemented through independent optimization rules: `SelectStarStrategy`, `JoinStrategy`, and `WhereColumnStrategy`. A new rule can be added without changing the execution service. |
+| **Repository** | Implemented through repositories for connections, query history, and analysis/recommendations. SQLite code is kept out of the user interface. |
+| **Service / Facade** | `QueryExecutionService` coordinates execution, timing, analysis, recommendations, and persistent storage through one simple method. |
+| **Factory Method** | Planned only if distinct analyzers for `SELECT`, `INSERT`, and `UPDATE` become necessary. |
 
 ## Core Data
 
@@ -59,4 +55,4 @@ QueryLens will persist information about database connections, query history, qu
 
 ## Project Status
 
-This repository is in the initial setup and design phase. The current focus is establishing a clean JavaFX/Maven/SQLite foundation and implementing the core query-analysis workflow before adding advanced reports or additional database support.
+The core SQLite query-analysis workflow is implemented. Next improvements can include a dedicated connection-management screen, real SQLite `EXPLAIN QUERY PLAN` output, index inspection, and report export.

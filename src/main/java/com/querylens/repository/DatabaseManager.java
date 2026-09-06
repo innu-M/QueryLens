@@ -19,6 +19,14 @@ public final class DatabaseManager {
             Files.createDirectories(Path.of("data"));
             try (Connection connection = DriverManager.getConnection(HISTORY_DATABASE_URL);
                  var statement = connection.createStatement()) {
+                statement.execute("PRAGMA foreign_keys = ON");
+                statement.executeUpdate("""
+                        CREATE TABLE IF NOT EXISTS database_connections (
+                            connection_id INTEGER PRIMARY KEY AUTOINCREMENT,
+                            database_path TEXT NOT NULL UNIQUE,
+                            created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+                        )
+                        """);
                 statement.executeUpdate("""
                         CREATE TABLE IF NOT EXISTS query_history (
                             query_id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -29,6 +37,41 @@ public final class DatabaseManager {
                             executed_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
                         )
                         """);
+                statement.executeUpdate("""
+                        CREATE TABLE IF NOT EXISTS query_analysis (
+                            analysis_id INTEGER PRIMARY KEY AUTOINCREMENT,
+                            query_id INTEGER NOT NULL UNIQUE,
+                            query_type TEXT NOT NULL,
+                            tables_used TEXT,
+                            join_count INTEGER NOT NULL,
+                            complexity_score INTEGER NOT NULL,
+                            risk_level TEXT NOT NULL,
+                            FOREIGN KEY (query_id) REFERENCES query_history(query_id)
+                        )
+                        """);
+                statement.executeUpdate("""
+                        CREATE TABLE IF NOT EXISTS recommendations (
+                            recommendation_id INTEGER PRIMARY KEY AUTOINCREMENT,
+                            query_id INTEGER NOT NULL,
+                            recommendation_type TEXT NOT NULL,
+                            description TEXT NOT NULL,
+                            priority TEXT NOT NULL,
+                            status TEXT NOT NULL DEFAULT 'PENDING',
+                            FOREIGN KEY (query_id) REFERENCES query_history(query_id)
+                        )
+                        """);
+                ensureRecommendationStatusColumn(connection);
+                statement.executeUpdate("""
+                        CREATE TABLE IF NOT EXISTS index_information (
+                            index_id INTEGER PRIMARY KEY AUTOINCREMENT,
+                            table_name TEXT NOT NULL,
+                            column_name TEXT NOT NULL,
+                            index_type TEXT,
+                            usage_count INTEGER NOT NULL DEFAULT 0,
+                            UNIQUE (table_name, column_name)
+                        )
+                        """);
+                statement.executeUpdate("CREATE INDEX IF NOT EXISTS idx_query_history_time ON query_history(execution_time_ms)");
             }
         } catch (IOException | SQLException exception) {
             throw new IllegalStateException("Could not initialize QueryLens history database.", exception);
@@ -36,10 +79,22 @@ public final class DatabaseManager {
     }
 
     public static Connection openHistoryConnection() throws SQLException {
-        return DriverManager.getConnection(HISTORY_DATABASE_URL);
+        Connection connection = DriverManager.getConnection(HISTORY_DATABASE_URL);
+        connection.createStatement().execute("PRAGMA foreign_keys = ON");
+        return connection;
     }
 
     public static Connection openTargetConnection(String databasePath) throws SQLException {
         return DriverManager.getConnection("jdbc:sqlite:" + databasePath);
+    }
+
+    private static void ensureRecommendationStatusColumn(Connection connection) throws SQLException {
+        try (var statement = connection.createStatement();
+             var columns = statement.executeQuery("PRAGMA table_info(recommendations)")) {
+            while (columns.next()) {
+                if ("status".equalsIgnoreCase(columns.getString("name"))) return;
+            }
+            statement.executeUpdate("ALTER TABLE recommendations ADD COLUMN status TEXT NOT NULL DEFAULT 'PENDING'");
+        }
     }
 }

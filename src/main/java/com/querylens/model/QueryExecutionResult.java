@@ -7,6 +7,8 @@ public record QueryExecutionResult(
         List<List<String>> rows,
         long executionTimeMs,
         String status,
-        boolean slow
+        boolean slow,
+        AnalysisResult analysis,
+        List<Recommendation> recommendations
 ) {
 }

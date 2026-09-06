@@ -1,6 +1,12 @@
 package com.querylens.service;
 
+import com.querylens.analyzer.RecommendationEngine;
+import com.querylens.analyzer.SimpleQueryAnalyzer;
+import com.querylens.model.AnalysisResult;
 import com.querylens.model.QueryExecutionResult;
+import com.querylens.model.Recommendation;
+import com.querylens.repository.AnalysisRepository;
+import com.querylens.repository.DatabaseConnectionRepository;
 import com.querylens.repository.DatabaseManager;
 import com.querylens.repository.QueryHistoryRepository;
 
@@ -17,6 +23,10 @@ public class QueryExecutionService {
     private static final int MAX_DISPLAYED_ROWS = 100;
 
     private final QueryHistoryRepository historyRepository = new QueryHistoryRepository();
+    private final AnalysisRepository analysisRepository = new AnalysisRepository();
+    private final DatabaseConnectionRepository connectionRepository = new DatabaseConnectionRepository();
+    private final SimpleQueryAnalyzer queryAnalyzer = new SimpleQueryAnalyzer();
+    private final RecommendationEngine recommendationEngine = new RecommendationEngine();
 
     public void initialize() {
         DatabaseManager.initializeHistoryDatabase();
@@ -30,6 +40,9 @@ public class QueryExecutionService {
             throw new IllegalArgumentException("Enter a SQL query before executing it.");
         }
 
+        connectionRepository.record(databasePath);
+        AnalysisResult analysis = queryAnalyzer.analyze(sql);
+        List<Recommendation> recommendations = recommendationEngine.recommend(analysis);
         long startedAt = System.nanoTime();
         List<String> columnNames = new ArrayList<>();
         List<List<String>> rows = new ArrayList<>();
@@ -51,9 +64,10 @@ public class QueryExecutionService {
 
         long executionTimeMs = (System.nanoTime() - startedAt) / 1_000_000;
         boolean slow = executionTimeMs >= SLOW_QUERY_THRESHOLD_MS;
-        historyRepository.save(databasePath, sql, executionTimeMs, slow ? "SLOW" : "SUCCESS");
+        long queryId = historyRepository.save(databasePath, sql, executionTimeMs, slow ? "SLOW" : "SUCCESS");
+        analysisRepository.save(queryId, analysis, recommendations);
 
-        return new QueryExecutionResult(columnNames, rows, executionTimeMs, status, slow);
+        return new QueryExecutionResult(columnNames, rows, executionTimeMs, status, slow, analysis, recommendations);
     }
 
     private void readRows(ResultSet resultSet, List<String> columnNames, List<List<String>> rows) throws SQLException {
