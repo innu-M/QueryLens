@@ -62,29 +62,37 @@ public class MainView {
         Button executeButton = new Button("Execute Query");
         TableView<List<String>> resultsTable = new TableView<>();
         resultsTable.setPlaceholder(new Label("Run a SELECT query to see its result."));
+        Tab resultsTab = new Tab("Query Results", resultsTable);
+        resultsTab.setClosable(false);
+        Tab analysisTab = new Tab("Analysis", analysisOutput);
+        analysisTab.setClosable(false);
+        Tab recommendationsTab = new Tab("Recommendations", recommendations);
+        recommendationsTab.setClosable(false);
+        TabPane details = new TabPane(resultsTab, analysisTab, recommendationsTab);
         executeButton.setOnAction(event -> executeQuery(databasePath, sqlInput, resultsTable,
-                analysisOutput, recommendations, status));
+                analysisOutput, recommendations, status, details));
 
         HBox connectionBar = new HBox(10, new Label("SQLite database:"), databasePath);
-        VBox top = new VBox(10, title, connectionBar, new Label("SQL query:"), sqlInput,
-                executeButton, status, new Label("Query analysis:"), analysisOutput,
-                new Label("Recommendations:"), recommendations);
+        VBox top = new VBox(10, title, connectionBar, new Label("SQL query:"), sqlInput, executeButton, status);
         top.setPadding(new Insets(18));
+        SplitPane content = new SplitPane(top, details);
+        content.setOrientation(javafx.geometry.Orientation.VERTICAL);
+        content.setDividerPositions(0.43);
         BorderPane root = new BorderPane();
-        root.setTop(top);
-        root.setCenter(resultsTable);
-        BorderPane.setMargin(resultsTable, new Insets(0, 18, 18, 18));
+        root.setCenter(content);
+        BorderPane.setMargin(content, new Insets(0, 18, 18, 18));
         return root;
     }
 
     private void executeQuery(TextField databasePath, TextArea sqlInput, TableView<List<String>> resultsTable,
-                              TextArea analysisOutput, ListView<String> recommendations, Label status) {
+                              TextArea analysisOutput, ListView<String> recommendations, Label status, TabPane details) {
         try {
             QueryExecutionResult result = queryService.execute(databasePath.getText().trim(), sqlInput.getText().trim());
             showResults(resultsTable, result);
             analysisOutput.setText(result.analysis().displayText());
             recommendations.getItems().setAll(result.recommendations().stream()
                     .map(item -> "[" + item.priority() + "] " + item.description()).toList());
+            details.getSelectionModel().select(0);
             status.setText(result.status() + " in " + result.executionTimeMs() + " ms"
                     + (result.slow() ? " — marked as slow" : ""));
         } catch (IllegalArgumentException exception) {
