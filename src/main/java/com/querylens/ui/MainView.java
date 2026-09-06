@@ -19,7 +19,7 @@ import javafx.scene.layout.VBox;
 import java.util.List;
 import java.util.function.Function;
 
-/** JavaFX layout and event handlers only. No SQL or analysis logic belongs here. */
+
 public class MainView {
 
     private final QueryExecutionService queryService;
