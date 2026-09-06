@@ -6,6 +6,7 @@ public record HistoryEntry(
         String sql,
         long executionTimeMs,
         String status,
+        String reviewStatus,
         String executedAt
 ) {
 }

@@ -122,6 +122,7 @@ public class MainView {
                 column("SQL", HistoryEntry::sql, 360),
                 column("Time (ms)", entry -> String.valueOf(entry.executionTimeMs()), 100),
                 column("Status", HistoryEntry::status, 100),
+                column("Review", HistoryEntry::reviewStatus, 100),
                 column("Executed", HistoryEntry::executedAt, 170)
         ));
         TextField search = new TextField();
@@ -141,10 +142,18 @@ public class MainView {
                 refreshHistory(historyTable, report);
             }
         });
+        Button reviewed = new Button("Mark Reviewed");
+        reviewed.setOnAction(event -> {
+            HistoryEntry selected = historyTable.getSelectionModel().getSelectedItem();
+            if (selected != null) {
+                historyRepository.markReviewed(selected.id());
+                refreshHistory(historyTable, report);
+            }
+        });
         Button refresh = new Button("Refresh History");
         refresh.setOnAction(event -> refreshHistory(historyTable, report));
         refreshHistory(historyTable, report);
-        HBox actions = new HBox(10, search, searchButton, clearSearch, refresh, delete);
+        HBox actions = new HBox(10, search, searchButton, clearSearch, refresh, reviewed, delete);
         HBox.setHgrow(search, Priority.ALWAYS);
         VBox box = new VBox(12, new Label("Performance report"), report, actions, historyTable);
         box.setPadding(new Insets(18));

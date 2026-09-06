@@ -38,7 +38,7 @@ public class QueryHistoryRepository {
 
     public List<HistoryEntry> find(String searchText) {
         String sql = """
-                SELECT query_id, database_path, sql_query, execution_time_ms, status, executed_at
+                SELECT query_id, database_path, sql_query, execution_time_ms, status, review_status, executed_at
                 FROM query_history
                 WHERE sql_query LIKE ? OR status LIKE ? OR database_path LIKE ?
                 ORDER BY query_id DESC LIMIT 100
@@ -55,7 +55,7 @@ public class QueryHistoryRepository {
             while (result.next()) {
                 entries.add(new HistoryEntry(result.getLong("query_id"), result.getString("database_path"),
                         result.getString("sql_query"), result.getLong("execution_time_ms"),
-                        result.getString("status"), result.getString("executed_at")));
+                        result.getString("status"), result.getString("review_status"), result.getString("executed_at")));
             }
             return entries;
             }
@@ -65,12 +65,34 @@ public class QueryHistoryRepository {
     }
 
     public void delete(long id) {
+        try (var connection = DatabaseManager.openHistoryConnection()) {
+            connection.setAutoCommit(false);
+            try (var recommendations = connection.prepareStatement("DELETE FROM recommendations WHERE query_id = ?");
+                 var analysis = connection.prepareStatement("DELETE FROM query_analysis WHERE query_id = ?");
+                 var history = connection.prepareStatement("DELETE FROM query_history WHERE query_id = ?")) {
+                recommendations.setLong(1, id);
+                recommendations.executeUpdate();
+                analysis.setLong(1, id);
+                analysis.executeUpdate();
+                history.setLong(1, id);
+                history.executeUpdate();
+                connection.commit();
+            } catch (SQLException exception) {
+                connection.rollback();
+                throw exception;
+            }
+        } catch (SQLException exception) {
+            throw new IllegalStateException("Could not delete history record.", exception);
+        }
+    }
+
+    public void markReviewed(long id) {
         try (var connection = DatabaseManager.openHistoryConnection();
-             var statement = connection.prepareStatement("DELETE FROM query_history WHERE query_id = ?")) {
+             var statement = connection.prepareStatement("UPDATE query_history SET review_status = 'REVIEWED' WHERE query_id = ?")) {
             statement.setLong(1, id);
             statement.executeUpdate();
         } catch (SQLException exception) {
-            throw new IllegalStateException("Could not delete history record.", exception);
+            throw new IllegalStateException("Could not update history review status.", exception);
         }
     }
 

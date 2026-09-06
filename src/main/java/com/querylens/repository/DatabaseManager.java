@@ -34,6 +34,7 @@ public final class DatabaseManager {
                             sql_query TEXT NOT NULL,
                             execution_time_ms INTEGER NOT NULL,
                             status TEXT NOT NULL,
+                            review_status TEXT NOT NULL DEFAULT 'NEW',
                             executed_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
                         )
                         """);
@@ -61,6 +62,7 @@ public final class DatabaseManager {
                         )
                         """);
                 ensureRecommendationStatusColumn(connection);
+                ensureHistoryReviewColumn(connection);
                 statement.executeUpdate("""
                         CREATE TABLE IF NOT EXISTS index_information (
                             index_id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -89,12 +91,28 @@ public final class DatabaseManager {
     }
 
     private static void ensureRecommendationStatusColumn(Connection connection) throws SQLException {
-        try (var statement = connection.createStatement();
-             var columns = statement.executeQuery("PRAGMA table_info(recommendations)")) {
-            while (columns.next()) {
-                if ("status".equalsIgnoreCase(columns.getString("name"))) return;
+        if (!hasColumn(connection, "recommendations", "status")) {
+            try (var statement = connection.createStatement()) {
+                statement.executeUpdate("ALTER TABLE recommendations ADD COLUMN status TEXT NOT NULL DEFAULT 'PENDING'");
             }
-            statement.executeUpdate("ALTER TABLE recommendations ADD COLUMN status TEXT NOT NULL DEFAULT 'PENDING'");
         }
+    }
+
+    private static void ensureHistoryReviewColumn(Connection connection) throws SQLException {
+        if (!hasColumn(connection, "query_history", "review_status")) {
+            try (var statement = connection.createStatement()) {
+                statement.executeUpdate("ALTER TABLE query_history ADD COLUMN review_status TEXT NOT NULL DEFAULT 'NEW'");
+            }
+        }
+    }
+
+    private static boolean hasColumn(Connection connection, String tableName, String columnName) throws SQLException {
+        try (var statement = connection.createStatement();
+             var columns = statement.executeQuery("PRAGMA table_info(" + tableName + ")")) {
+            while (columns.next()) {
+                if (columnName.equalsIgnoreCase(columns.getString("name"))) return true;
+            }
+        }
+        return false;
     }
 }
