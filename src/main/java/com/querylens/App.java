@@ -6,7 +6,6 @@ import javafx.application.Application;
 import javafx.scene.Scene;
 import javafx.stage.Stage;
 
-/** JavaFX application entry point. UI details live in the ui package. */
 public class App extends Application {
 
     private final QueryExecutionService queryService = new QueryExecutionService();
@@ -20,7 +19,7 @@ public class App extends Application {
     public void start(Stage stage) {
         MainView mainView = new MainView(queryService);
         stage.setTitle("QueryLens");
-        Scene scene = new Scene(mainView.create(), 1000, 760);
+        Scene scene = new Scene(mainView.create(), 850, 620);
         scene.getStylesheets().add(getClass().getResource("/com/querylens/ui/theme.css").toExternalForm());
         stage.setScene(scene);
         stage.show();
