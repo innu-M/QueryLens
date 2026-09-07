@@ -16,7 +16,6 @@ import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.List;
 
-/** Coordinates query execution and saving performance history. */
 public class QueryExecutionService {
 
     private static final long SLOW_QUERY_THRESHOLD_MS = 500;
@@ -27,6 +26,7 @@ public class QueryExecutionService {
     private final DatabaseConnectionRepository connectionRepository = new DatabaseConnectionRepository();
     private final SimpleQueryAnalyzer queryAnalyzer = new SimpleQueryAnalyzer();
     private final RecommendationEngine recommendationEngine = new RecommendationEngine();
+    private final SQLiteQueryPlanInspector queryPlanInspector = new SQLiteQueryPlanInspector();
 
     public void initialize() {
         DatabaseManager.initializeHistoryDatabase();
@@ -42,7 +42,7 @@ public class QueryExecutionService {
 
         connectionRepository.record(databasePath);
         AnalysisResult analysis = queryAnalyzer.analyze(sql);
-        List<Recommendation> recommendations = recommendationEngine.recommend(analysis);
+        List<Recommendation> recommendations;
         long startedAt = System.nanoTime();
         List<String> columnNames = new ArrayList<>();
         List<List<String>> rows = new ArrayList<>();
@@ -50,6 +50,8 @@ public class QueryExecutionService {
 
         try (var connection = DatabaseManager.openTargetConnection(databasePath);
              var statement = connection.createStatement()) {
+            analysis = queryPlanInspector.inspect(connection, sql, analysis);
+            recommendations = recommendationEngine.recommend(analysis);
             boolean returnsRows = statement.execute(sql);
 
             if (returnsRows) {

@@ -8,7 +8,6 @@ import java.util.Locale;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
-/** A small first analyzer. More advanced rules will be added later. */
 public class SimpleQueryAnalyzer {
 
     private static final Pattern QUERY_TYPE = Pattern.compile("^\\s*(SELECT|INSERT|UPDATE|DELETE)", Pattern.CASE_INSENSITIVE);
@@ -17,7 +16,8 @@ public class SimpleQueryAnalyzer {
 
     public AnalysisResult analyze(String sql) {
         if (sql == null || sql.isBlank()) {
-            return new AnalysisResult("Unknown", List.of(), 0, false, List.of(), 0, "Low", false, List.of("Input"));
+            return new AnalysisResult("Unknown", List.of(), 0, false, List.of(), 0, "Low", false,
+                    List.of("Input"), List.of());
         }
 
         String queryType = findQueryType(sql);
@@ -32,14 +32,8 @@ public class SimpleQueryAnalyzer {
         String risk = score >= 4 ? "High" : score >= 2 ? "Medium" : "Low";
 
         List<String> whereColumns = findWhereColumns(sql);
-        List<String> planSteps = new ArrayList<>();
-        planSteps.add("Scan");
-        if (hasWhereClause) planSteps.add("Filter");
-        if (joinCount > 0) planSteps.add("Join");
-        planSteps.add("Output");
-
         return new AnalysisResult(queryType, tables, joinCount, hasWhereClause, whereColumns,
-                score, risk, usesSelectStar, planSteps);
+                score, risk, usesSelectStar, List.of("Plan will be captured during execution."), List.of());
     }
 
     private String findQueryType(String sql) {

@@ -6,7 +6,6 @@ import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.List;
 
-/** Stores every SQLite database path that QueryLens analyzes. */
 public class DatabaseConnectionRepository {
 
     public void record(String databasePath) {
