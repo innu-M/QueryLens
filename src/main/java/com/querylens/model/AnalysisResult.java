@@ -11,8 +11,14 @@ public record AnalysisResult(
         int complexityScore,
         String riskLevel,
         boolean usesSelectStar,
-        List<String> planSteps
+        List<String> planSteps,
+        List<String> indexedWhereColumns
 ) {
+    public AnalysisResult withExecutionDetails(List<String> actualPlanSteps, List<String> actualIndexedColumns) {
+        return new AnalysisResult(queryType, tables, joinCount, hasWhereClause, whereColumns,
+                complexityScore, riskLevel, usesSelectStar, actualPlanSteps, actualIndexedColumns);
+    }
+
     public String displayText() {
         return "Query type: " + queryType + "\n"
                 + "Tables: " + (tables.isEmpty() ? "Not detected" : String.join(", ", tables)) + "\n"
@@ -20,6 +26,7 @@ public record AnalysisResult(
                 + "WHERE clause: " + (hasWhereClause ? "Yes" : "No") + "\n"
                 + "WHERE columns: " + (whereColumns.isEmpty() ? "Not detected" : String.join(", ", whereColumns)) + "\n"
                 + "Complexity: " + riskLevel + " (score " + complexityScore + ")\n"
-                + "Plan: " + String.join(" → ", planSteps);
+                + "Indexed WHERE columns: " + (indexedWhereColumns.isEmpty() ? "None detected" : String.join(", ", indexedWhereColumns)) + "\n"
+                + "SQLite plan: " + String.join(" → ", planSteps);
     }
 }

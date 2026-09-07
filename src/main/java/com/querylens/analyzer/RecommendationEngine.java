@@ -5,7 +5,6 @@ import com.querylens.model.Recommendation;
 
 import java.util.List;
 
-/** Uses small interchangeable recommendation strategies. */
 public class RecommendationEngine {
     private final List<RecommendationStrategy> strategies = List.of(
             new SelectStarStrategy(), new JoinStrategy(), new WhereColumnStrategy()
