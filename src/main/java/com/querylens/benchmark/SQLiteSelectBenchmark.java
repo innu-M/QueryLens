@@ -4,8 +4,8 @@ import java.sql.Connection;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
-import java.util.Objects;
 
 public class SQLiteSelectBenchmark extends QueryBenchmarkTemplate {
     private static final int QUERY_TIMEOUT_SECONDS = 10;
@@ -39,7 +39,7 @@ public class SQLiteSelectBenchmark extends QueryBenchmarkTemplate {
                 while (rows.next()) {
                     Object[] values = new Object[columnCount];
                     for (int column = 1; column <= columnCount; column++) values[column - 1] = rows.getObject(column);
-                    long rowHash = Integer.toUnsignedLong(Objects.hash(values));
+                    long rowHash = Integer.toUnsignedLong(Arrays.deepHashCode(values));
                     rowHashSum += rowHash;
                     // Sum and XOR deliberately ignore row order because SQL results without ORDER BY
                     // have no guaranteed order. Row count keeps duplicate multiplicity visible.

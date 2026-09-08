@@ -19,4 +19,9 @@ class CandidateValidationChainTest {
         assertFalse(chain.validate(new QueryCandidate("Write", "UPDATE sailors SET rating = 1", "Unsafe")).valid());
         assertFalse(chain.validate(new QueryCandidate("Multiple", "SELECT 1; SELECT 2", "Unsafe")).valid());
     }
+
+    @Test
+    void doesNotTreatAKeywordInsideAStringAsAWrite() {
+        assertTrue(chain.validate(new QueryCandidate("Text", "SELECT 'delete' AS operation", "Safe text")).valid());
+    }
 }
