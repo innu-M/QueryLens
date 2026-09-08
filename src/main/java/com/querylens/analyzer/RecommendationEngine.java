@@ -6,9 +6,7 @@ import com.querylens.model.Recommendation;
 import java.util.List;
 
 public class RecommendationEngine {
-    private final List<RecommendationStrategy> strategies = List.of(
-            new SelectStarStrategy(), new JoinStrategy(), new WhereColumnStrategy()
-    );
+    private final List<RecommendationStrategy> strategies = new RecommendationStrategyFactory().createStrategies();
 
     public List<Recommendation> recommend(AnalysisResult analysis) {
         return strategies.stream()

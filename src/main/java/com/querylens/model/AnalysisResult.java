@@ -15,8 +15,10 @@ public record AnalysisResult(
         List<String> indexedWhereColumns
 ) {
     public AnalysisResult withExecutionDetails(List<String> actualPlanSteps, List<String> actualIndexedColumns) {
-        return new AnalysisResult(queryType, tables, joinCount, hasWhereClause, whereColumns,
-                complexityScore, riskLevel, usesSelectStar, actualPlanSteps, actualIndexedColumns);
+        return AnalysisResultBuilder.from(this)
+                .planSteps(actualPlanSteps)
+                .indexedWhereColumns(actualIndexedColumns)
+                .build();
     }
 
     public String displayText() {

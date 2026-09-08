@@ -1,10 +1,13 @@
 package com.querylens.ui;
 
 import com.querylens.model.HistoryEntry;
+import com.querylens.command.ExecuteQueryCommand;
 import com.querylens.model.QueryExecutionResult;
 import com.querylens.model.DatabaseConnectionEntry;
 import com.querylens.model.RecommendationEntry;
+import com.querylens.model.IndexEntry;
 import com.querylens.repository.DatabaseConnectionRepository;
+import com.querylens.repository.IndexCatalogRepository;
 import com.querylens.repository.QueryHistoryRepository;
 import com.querylens.repository.RecommendationRepository;
 import com.querylens.service.QueryExecutionService;
@@ -26,6 +29,7 @@ public class MainView {
     private final QueryHistoryRepository historyRepository = new QueryHistoryRepository();
     private final DatabaseConnectionRepository connectionRepository = new DatabaseConnectionRepository();
     private final RecommendationRepository recommendationRepository = new RecommendationRepository();
+    private final IndexCatalogRepository indexCatalogRepository = new IndexCatalogRepository();
 
     public MainView(QueryExecutionService queryService) {
         this.queryService = queryService;
@@ -40,7 +44,9 @@ public class MainView {
         historyTab.setClosable(false);
         Tab recommendationsTab = new Tab("Recommendations", createRecommendationsView());
         recommendationsTab.setClosable(false);
-        return new TabPane(analyzerTab, connectionsTab, historyTab, recommendationsTab);
+        Tab indexesTab = new Tab("Index Catalog", createIndexCatalogView());
+        indexesTab.setClosable(false);
+        return new TabPane(analyzerTab, connectionsTab, historyTab, recommendationsTab, indexesTab);
     }
 
     private BorderPane createAnalyzerView() {
@@ -87,7 +93,8 @@ public class MainView {
     private void executeQuery(TextField databasePath, TextArea sqlInput, TableView<List<String>> resultsTable,
                               TextArea analysisOutput, ListView<String> recommendations, Label status, TabPane details) {
         try {
-            QueryExecutionResult result = queryService.execute(databasePath.getText().trim(), sqlInput.getText().trim());
+            QueryExecutionResult result = new ExecuteQueryCommand(queryService,
+                    databasePath.getText().trim(), sqlInput.getText().trim()).execute();
             showResults(resultsTable, result);
             analysisOutput.setText(result.analysis().displayText());
             recommendations.getItems().setAll(result.recommendations().stream()
@@ -246,6 +253,36 @@ public class MainView {
         refreshRecommendations(table);
         HBox controls = new HBox(10, applied, dismissed, delete, refresh);
         VBox box = new VBox(12, title, message, controls, table);
+        box.setPadding(new Insets(18));
+        VBox.setVgrow(table, Priority.ALWAYS);
+        return box;
+    }
+
+    private VBox createIndexCatalogView() {
+        Label title = new Label("Actual SQLite Index Catalog");
+        TextField path = new TextField("data/demo.db");
+        path.setPromptText("SQLite database path");
+        Label message = new Label("Refresh to inspect indexes in the selected database.");
+        TableView<IndexEntry> table = new TableView<>();
+        table.getColumns().addAll(List.of(
+                column("Table", IndexEntry::tableName, 230),
+                column("Index", IndexEntry::indexName, 300),
+                column("Column", IndexEntry::columnName, 220),
+                column("Unique", entry -> entry.unique() ? "Yes" : "No", 100)
+        ));
+        Button refresh = new Button("Inspect Indexes");
+        refresh.setOnAction(event -> {
+            try {
+                table.getItems().setAll(indexCatalogRepository.findAll(path.getText().trim()));
+                message.setText(table.getItems().size() + " index column(s) found.");
+            } catch (Exception exception) {
+                table.getItems().clear();
+                message.setText(exception.getMessage());
+            }
+        });
+        HBox controls = new HBox(10, new Label("SQLite database:"), path, refresh);
+        HBox.setHgrow(path, Priority.ALWAYS);
+        VBox box = new VBox(12, title, controls, message, table);
         box.setPadding(new Insets(18));
         VBox.setVgrow(table, Priority.ALWAYS);
         return box;

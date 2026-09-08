@@ -5,10 +5,10 @@ import com.querylens.analyzer.SimpleQueryAnalyzer;
 import com.querylens.model.AnalysisResult;
 import com.querylens.model.QueryExecutionResult;
 import com.querylens.model.Recommendation;
-import com.querylens.repository.AnalysisRepository;
 import com.querylens.repository.DatabaseConnectionRepository;
 import com.querylens.repository.DatabaseManager;
-import com.querylens.repository.QueryHistoryRepository;
+import com.querylens.observer.PersistenceObserver;
+import com.querylens.observer.QueryExecutionPublisher;
 
 import java.sql.ResultSet;
 import java.sql.ResultSetMetaData;
@@ -21,12 +21,15 @@ public class QueryExecutionService {
     private static final long SLOW_QUERY_THRESHOLD_MS = 500;
     private static final int MAX_DISPLAYED_ROWS = 100;
 
-    private final QueryHistoryRepository historyRepository = new QueryHistoryRepository();
-    private final AnalysisRepository analysisRepository = new AnalysisRepository();
     private final DatabaseConnectionRepository connectionRepository = new DatabaseConnectionRepository();
     private final SimpleQueryAnalyzer queryAnalyzer = new SimpleQueryAnalyzer();
     private final RecommendationEngine recommendationEngine = new RecommendationEngine();
-    private final SQLiteQueryPlanInspector queryPlanInspector = new SQLiteQueryPlanInspector();
+    private final QueryPlanProvider queryPlanInspector = new SQLiteQueryPlanInspector();
+    private final QueryExecutionPublisher publisher = new QueryExecutionPublisher();
+
+    public QueryExecutionService() {
+        publisher.subscribe(new PersistenceObserver());
+    }
 
     public void initialize() {
         DatabaseManager.initializeHistoryDatabase();
@@ -66,10 +69,10 @@ public class QueryExecutionService {
 
         long executionTimeMs = (System.nanoTime() - startedAt) / 1_000_000;
         boolean slow = executionTimeMs >= SLOW_QUERY_THRESHOLD_MS;
-        long queryId = historyRepository.save(databasePath, sql, executionTimeMs, slow ? "SLOW" : "SUCCESS");
-        analysisRepository.save(queryId, analysis, recommendations);
-
-        return new QueryExecutionResult(columnNames, rows, executionTimeMs, status, slow, analysis, recommendations);
+        QueryExecutionResult result = new QueryExecutionResult(databasePath, sql, columnNames, rows,
+                executionTimeMs, status, slow, analysis, recommendations);
+        publisher.publish(result);
+        return result;
     }
 
     private void readRows(ResultSet resultSet, List<String> columnNames, List<List<String>> rows) throws SQLException {

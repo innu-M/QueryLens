@@ -8,7 +8,7 @@ import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.List;
 
-public class SQLiteQueryPlanInspector {
+public class SQLiteQueryPlanInspector implements QueryPlanProvider {
 
     public AnalysisResult inspect(Connection connection, String sql, AnalysisResult analysis) {
         List<String> planSteps = readPlan(connection, sql, analysis.queryType());
