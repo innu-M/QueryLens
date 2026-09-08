@@ -108,6 +108,6 @@ The project includes focused tests for SQL analysis, plan/index inspection, inde
 ### Submitted by
 ### **Fahmida Munni** 
 ### (Roll: **BSSE1604**)
-and
+### and
 ### **Irin Sultana** 
 ### (Roll: **BSSE1642**)
