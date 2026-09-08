@@ -40,7 +40,35 @@ erDiagram
         TEXT index_type
         INTEGER usage_count
     }
+    COMPARISON_SESSIONS {
+        INTEGER comparison_id PK
+        TEXT database_path
+        TEXT original_sql
+        TEXT normalized_query
+        TEXT created_at
+    }
+    CANDIDATE_COMPARISONS {
+        INTEGER candidate_id PK
+        INTEGER comparison_id FK
+        TEXT label
+        TEXT candidate_sql
+        INTEGER median_duration_ns
+        INTEGER equivalent
+        TEXT status
+        INTEGER rank_position
+        REAL percentile
+        TEXT explanation
+        TEXT plan_text
+    }
+    BENCHMARK_RUNS {
+        INTEGER benchmark_run_id PK
+        INTEGER candidate_id FK
+        INTEGER run_number
+        INTEGER duration_ns
+    }
 
     QUERY_HISTORY ||--|| QUERY_ANALYSIS : has
     QUERY_HISTORY ||--o{ RECOMMENDATIONS : produces
+    COMPARISON_SESSIONS ||--|{ CANDIDATE_COMPARISONS : contains
+    CANDIDATE_COMPARISONS ||--o{ BENCHMARK_RUNS : measures
 ```

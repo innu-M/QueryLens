@@ -1,6 +1,6 @@
 # QueryLens — Database Query Performance Analyzer
 
-QueryLens is a JavaFX desktop application that helps a user execute SQLite queries, inspect their performance, understand their query plans, and receive practical optimization advice. It is a database-learning and developer-support tool, not a replacement for a database engine.
+QueryLens is a JavaFX desktop application that helps a user execute SQLite queries, inspect their performance, understand their query plans, compare safe alternative plans, and receive practical optimization advice. It is a database-learning and developer-support tool, not a replacement for a database engine.
 
 ## What problem does it solve?
 
@@ -17,8 +17,11 @@ It executes the user's query against the selected SQLite database, measures the 
 - Use SQLite `EXPLAIN QUERY PLAN` to identify scans, automatic indexes, and temporary B-trees.
 - Check the target database's existing indexes before suggesting a new index.
 - Recommend improvements for `SELECT *`, expensive joins, full scans on filtered columns, automatic indexes, and temporary B-trees.
+- Generate safe single-table `SELECT` alternatives using SQLite's default plan, `NOT INDEXED`, and available `INDEXED BY` choices.
+- Benchmark each candidate with one warm-up and five measured executions, then rank verified-equivalent results by median time.
+- Show a comparison chart, real plan differences, evidence-based explanations, and a local-history performance percentile.
 - Store connections, query history, analysis results, recommendations, and index metadata in a separate SQLite history database.
-- Show five screens: Query Analyzer, Connections, History & Report, Recommendations, and Index Catalog.
+- Show six screens: Query Analyzer, Alternative Plans, Connections, History & Report, Recommendations, and Index Catalog.
 
 ## Simple workflow
 
@@ -35,6 +38,24 @@ Generate recommendations
         ↓
 Save history and review results
 ```
+
+The Alternative Plans workflow is:
+
+```text
+Validate one read-only SELECT
+        ↓
+Generate default/index/table-scan candidates
+        ↓
+Warm up + measure each candidate five times
+        ↓
+Reject candidates whose result fingerprint differs
+        ↓
+Rank by median time + explain plan differences
+        ↓
+Save samples and calculate a comparable local percentile
+```
+
+The percentile means “beats this percentage of previously saved, verified candidates for the same database path and normalized query family.” It is not a claim about other QueryLens users.
 
 ## Technology
 
@@ -77,15 +98,17 @@ The patterns below are in the application/business-logic layers; they are not me
 | Pattern | Implementation | Problem solved |
 | --- | --- | --- |
 | Strategy | `RecommendationStrategy` and its optimization-rule classes | Adds a recommendation rule without changing query execution. |
-| Factory | `RecommendationStrategyFactory` | Creates the standard set of optimization strategies in one place. |
-| Observer | `QueryExecutionPublisher`, `QueryExecutionObserver`, `PersistenceObserver` | Persists query results after execution without coupling execution to storage. |
-| Command | `Command` and `ExecuteQueryCommand` | Encapsulates one query-execution request as an object. |
+| Strategy | `QueryRewriteStrategy`, `IndexPlanStrategy`, and `RankingStrategy` | Adds candidate-generation or ranking algorithms without changing orchestration. |
+| Factory | Recommendation and query-rewrite strategy factories | Centralizes selection of extensible algorithm families. |
+| Chain of Responsibility | Candidate validators under `validation` | Applies independent SELECT-only, single-statement, and read-only safety rules. |
+| Observer | Query and benchmark publishers with persistence observers | Persists completed work and supports additional progress consumers without changing execution. |
+| Command | `ExecuteQueryCommand` and `CompareAlternativesCommand` | Encapsulates distinct user operations as request objects. |
 | Repository | Repository classes under `repository` | Keeps SQLite persistence code out of services and the UI. |
-| Template Method | `QueryAnalysisTemplate` and `SimpleQueryAnalyzer` | Reuses the fixed analysis process while allowing parser-specific steps. |
+| Template Method | `QueryAnalysisTemplate` and `QueryBenchmarkTemplate` | Reuses fixed analysis and benchmark workflows while allowing engine-specific steps. |
 | Builder | `AnalysisResultBuilder` | Builds analysis results safely from many optional values. |
 | State | `RecommendationState` classes | Validates recommendation status changes such as Pending to Applied. |
 | Adapter | `SQLiteQueryPlanInspector` through `QueryPlanProvider` | Hides SQLite-specific plan and index APIs behind a stable interface. |
-| Service / Facade | `QueryExecutionService` | Provides one simple operation that coordinates execution, timing, analysis, plan inspection, recommendations, and publishing. |
+| Service / Facade | Query execution and alternative-comparison services | Coordinate validation, generation, execution, ranking, explanation, percentile calculation, and publishing. |
 
 ## Important documents
 
@@ -99,7 +122,7 @@ The patterns below are in the application/business-logic layers; they are not me
 
 ## Test coverage
 
-The project includes focused tests for SQL analysis, plan/index inspection, index recommendation behavior, and recommendation-state transitions. Run `mvn test` before submission.
+The project includes focused tests for SQL analysis, candidate generation and validation, benchmarking, ranking, normalization, plan explanations, index inspection, recommendations, and state transitions. Run `mvn test` before submission.
 
 ### Submitted to
 ## **Mridha MD. Nafis Fuad**

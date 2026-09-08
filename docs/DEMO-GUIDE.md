@@ -1,5 +1,17 @@
 # Final Demonstration Guide
 
+## Workflow 0: Alternative-plan competition
+
+1. Open **Alternative Plans** and select a SQLite database containing an indexed single table.
+2. Enter a single-table `SELECT` with a filter and click **Compare Safe Alternatives**.
+3. Show the default, `NOT INDEXED`, and `INDEXED BY` candidates.
+4. Explain that one warm-up and five measured executions are used, and that lower median time ranks higher.
+5. Select each row to show its SQL, actual SQLite plan, generation rationale, and evidence-based explanation.
+6. Run the comparison again to demonstrate the local “Beats X%” history percentile.
+7. Try an `UPDATE` to demonstrate the validation chain rejecting automatic write benchmarking.
+
+This workflow naturally demonstrates Strategy, Factory, Chain of Responsibility, Template Method, Command, Observer, Repository, and Facade.
+
 ## Workflow 1: Query execution and dynamic optimization
 
 1. Open Query Analyzer.

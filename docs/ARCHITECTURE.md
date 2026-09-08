@@ -2,12 +2,21 @@
 
 ## Purpose
 
-QueryLens is a JavaFX developer tool that executes SQLite queries, measures their execution time, reads SQLite's actual `EXPLAIN QUERY PLAN` output, stores query history, and creates optimization recommendations.
+QueryLens is a JavaFX developer tool that executes SQLite queries, measures their execution time, reads SQLite's actual `EXPLAIN QUERY PLAN` output, stores query history, creates optimization recommendations, and safely compares alternative plans for eligible `SELECT` queries.
 
 ## Architecture
 
 ```text
 ui → command → service facade → analyzer / plan provider → repositories → SQLite
+```
+
+The alternative-comparison flow is:
+
+```text
+UI → CompareAlternativesCommand → AlternativeComparisonService
+   → validation chain → rewrite strategies → benchmark template
+   → ranking strategy → explanation service → benchmark publisher
+   → persistence observer → comparison repository
 ```
 
 The JavaFX package contains controls and event handlers only. Query analysis, recommendations, state transitions, execution, and persistence are implemented outside the UI.
@@ -17,14 +26,16 @@ The JavaFX package contains controls and event handlers only. Query analysis, re
 | Pattern | Problem | Implementation | Future benefit |
 | --- | --- | --- | --- |
 | Strategy | Each optimization issue has different detection logic. | `RecommendationStrategy` with select-star, join, full-scan, automatic-index, and temporary-B-tree strategies. | New optimization rules can be added without changing the engine. |
+| Strategy | Candidate generation and ranking can use different algorithms. | `QueryRewriteStrategy`, `IndexPlanStrategy`, `RankingStrategy`, and `MedianTimeRankingStrategy`. | New rewrite and scoring algorithms can be added independently. |
+| Chain of Responsibility | Unsafe candidates must fail independent checks with a precise reason. | Validators for SELECT-only, single-statement, and read-only rules. | New safety policies can be inserted without one large conditional method. |
 | Repository | SQL in UI or services would mix responsibilities. | Connection, history, analysis, recommendation, and index-catalog repositories. | Persistence can be changed or tested independently. |
-| Facade / Service Layer | Query execution requires many coordinated steps. | `QueryExecutionService`. | UI needs one execution method instead of knowing every subsystem. |
-| Factory | Creating all strategies in the engine causes tight coupling. | `RecommendationStrategyFactory`. | A different strategy set can be supplied later. |
+| Facade / Service Layer | Execution and comparison require many coordinated steps. | `QueryExecutionService` and `AlternativeComparisonService`. | UI gets simple operations without knowing every subsystem. |
+| Factory | Creating all strategies in an engine causes tight coupling. | Recommendation and query-rewrite strategy factories. | Different strategy sets can be supplied later. |
 | Builder | `AnalysisResult` has many optional fields. | `AnalysisResultBuilder`. | New analysis fields can be added without long constructors. |
 | Adapter | SQLite uses database-specific `EXPLAIN` and `PRAGMA` APIs. | `QueryPlanProvider` and `SQLiteQueryPlanInspector`. | MySQL or PostgreSQL providers can be introduced later. |
-| Template Method | Query analyzers share a fixed parse-score-build process. | `QueryAnalysisTemplate`. | Specialized analyzers can customize complexity without copying the workflow. |
-| Command | A user query is an executable request containing data and behavior. | `ExecuteQueryCommand`. | Command history, retry, and undoable safe actions can be added later. |
-| Observer | Saving results should not make execution depend on persistence details. | `QueryExecutionPublisher` and `PersistenceObserver`. | More observers, such as notifications or dashboards, can subscribe without changing execution. |
+| Template Method | Analysis and benchmarking have fixed workflows with variable steps. | `QueryAnalysisTemplate`, `QueryBenchmarkTemplate`, and `SQLiteSelectBenchmark`. | Other engines or benchmark policies can reuse the workflows. |
+| Command | User operations should be encapsulated as request objects. | `ExecuteQueryCommand` and `CompareAlternativesCommand`. | An invoker can later add cancellation, queuing, or retry behavior. |
+| Observer | Completed work should not know how every consumer handles it. | Query and benchmark publishers notify persistence observers. | UI progress, auditing, or telemetry observers can be added independently. |
 | State | Recommendations have valid lifecycle transitions. | Pending, Applied, and Dismissed state classes. | Future states such as `REJECTED` can be added with transition rules. |
 
 ## Real SQLite Optimization Logic
