@@ -56,3 +56,12 @@ QueryLens will persist information about database connections, query history, qu
 ## Project Status
 
 The core SQLite query-analysis workflow is implemented. Next improvements can include a dedicated connection-management screen, real SQLite `EXPLAIN QUERY PLAN` output, index inspection, and report export.
+
+## Submission Documentation
+
+- [Architecture and patterns](docs/ARCHITECTURE.md)
+- [UML class diagram](docs/UML-CLASS-DIAGRAM.md)
+- [Database ER diagram](docs/ER-DIAGRAM.md)
+- [Final demonstration guide](docs/DEMO-GUIDE.md)
+- [SQLite schema](src/main/resources/database/schema.sql)
+- [SQLite sample data](src/main/resources/database/sample-data.sql)
