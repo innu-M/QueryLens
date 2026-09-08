@@ -19,7 +19,7 @@ public class App extends Application {
     public void start(Stage stage) {
         MainView mainView = new MainView(queryService);
         stage.setTitle("QueryLens");
-        Scene scene = new Scene(mainView.create(), 850, 620);
+        Scene scene = new Scene(mainView.create(), 1000, 720);
         scene.getStylesheets().add(getClass().getResource("/com/querylens/ui/theme.css").toExternalForm());
         stage.setScene(scene);
         stage.show();

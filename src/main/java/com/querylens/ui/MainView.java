@@ -2,6 +2,9 @@ package com.querylens.ui;
 
 import com.querylens.model.HistoryEntry;
 import com.querylens.command.ExecuteQueryCommand;
+import com.querylens.command.CompareAlternativesCommand;
+import com.querylens.comparison.CandidateComparison;
+import com.querylens.comparison.ComparisonReport;
 import com.querylens.model.QueryExecutionResult;
 import com.querylens.model.DatabaseConnectionEntry;
 import com.querylens.model.RecommendationEntry;
@@ -11,15 +14,22 @@ import com.querylens.repository.IndexCatalogRepository;
 import com.querylens.repository.QueryHistoryRepository;
 import com.querylens.repository.RecommendationRepository;
 import com.querylens.service.QueryExecutionService;
+import com.querylens.service.AlternativeComparisonService;
+import javafx.concurrent.Task;
 import javafx.beans.property.SimpleStringProperty;
 import javafx.geometry.Insets;
 import javafx.scene.control.*;
+import javafx.scene.chart.BarChart;
+import javafx.scene.chart.CategoryAxis;
+import javafx.scene.chart.NumberAxis;
+import javafx.scene.chart.XYChart;
 import javafx.scene.layout.BorderPane;
 import javafx.scene.layout.HBox;
 import javafx.scene.layout.Priority;
 import javafx.scene.layout.VBox;
 
 import java.util.List;
+import java.util.Locale;
 import java.util.function.Function;
 
 
@@ -30,6 +40,7 @@ public class MainView {
     private final DatabaseConnectionRepository connectionRepository = new DatabaseConnectionRepository();
     private final RecommendationRepository recommendationRepository = new RecommendationRepository();
     private final IndexCatalogRepository indexCatalogRepository = new IndexCatalogRepository();
+    private final AlternativeComparisonService comparisonService = new AlternativeComparisonService();
 
     public MainView(QueryExecutionService queryService) {
         this.queryService = queryService;
@@ -46,7 +57,122 @@ public class MainView {
         recommendationsTab.setClosable(false);
         Tab indexesTab = new Tab("Index Catalog", createIndexCatalogView());
         indexesTab.setClosable(false);
-        return new TabPane(analyzerTab, connectionsTab, historyTab, recommendationsTab, indexesTab);
+        Tab alternativesTab = new Tab("Alternative Plans", createAlternativePlansView());
+        alternativesTab.setClosable(false);
+        return new TabPane(analyzerTab, alternativesTab, connectionsTab, historyTab, recommendationsTab, indexesTab);
+    }
+
+    private BorderPane createAlternativePlansView() {
+        TextField databasePath = new TextField("data/demo.db");
+        TextArea sqlInput = new TextArea("SELECT sid, sname FROM Sailors WHERE rating = 8;");
+        sqlInput.setPrefRowCount(4);
+        Button compare = new Button("Compare Safe Alternatives");
+        ProgressIndicator progress = new ProgressIndicator();
+        progress.setPrefSize(24, 24);
+        progress.setVisible(false);
+        Label summary = new Label("Only one read-only SELECT statement is benchmarked at a time.");
+
+        TableView<CandidateComparison> table = new TableView<>();
+        table.getColumns().addAll(List.of(
+                column("Rank", candidate -> candidate.rank() == 0 ? "-" : String.valueOf(candidate.rank()), 65),
+                column("Candidate", candidate -> candidate.candidate().label(), 190),
+                column("Median (ms)", this::formatMedian, 110),
+                column("Local percentile", this::formatPercentile, 125),
+                column("Status", CandidateComparison::status, 120)
+        ));
+
+        CategoryAxis candidateAxis = new CategoryAxis();
+        NumberAxis timeAxis = new NumberAxis();
+        timeAxis.setLabel("Median milliseconds (lower is better)");
+        BarChart<String, Number> chart = new BarChart<>(candidateAxis, timeAxis);
+        chart.setLegendVisible(false);
+        chart.setAnimated(false);
+        chart.setPrefHeight(230);
+
+        TextArea details = new TextArea("Select a candidate to see its SQL, plan, and explanation.");
+        details.setEditable(false);
+        details.setPrefRowCount(7);
+        table.getSelectionModel().selectedItemProperty().addListener((ignored, oldValue, selected) -> {
+            if (selected != null) details.setText(candidateDetails(selected));
+        });
+
+        compare.setOnAction(event -> runComparison(databasePath, sqlInput, compare, progress, summary, table, chart, details));
+        HBox databaseBar = new HBox(10, new Label("SQLite database:"), databasePath);
+        HBox.setHgrow(databasePath, Priority.ALWAYS);
+        HBox actionBar = new HBox(10, compare, progress, summary);
+        VBox controls = new VBox(10, new Label("Original SELECT:"), sqlInput, databaseBar, actionBar);
+        controls.setPadding(new Insets(18));
+        SplitPane results = new SplitPane(table, chart, details);
+        results.setOrientation(javafx.geometry.Orientation.VERTICAL);
+        results.setDividerPositions(0.38, 0.70);
+        BorderPane root = new BorderPane(results);
+        root.setTop(controls);
+        BorderPane.setMargin(results, new Insets(0, 18, 18, 18));
+        return root;
+    }
+
+    private void runComparison(TextField databasePath, TextArea sqlInput, Button compare,
+                               ProgressIndicator progress, Label summary, TableView<CandidateComparison> table,
+                               BarChart<String, Number> chart, TextArea details) {
+        compare.setDisable(true);
+        progress.setVisible(true);
+        summary.setText("Generating and benchmarking alternatives...");
+        String selectedDatabasePath = databasePath.getText().trim();
+        String requestedSql = sqlInput.getText().trim();
+        Task<ComparisonReport> task = new Task<>() {
+            @Override
+            protected ComparisonReport call() throws Exception {
+                return new CompareAlternativesCommand(comparisonService, selectedDatabasePath, requestedSql).execute();
+            }
+        };
+        task.setOnSucceeded(event -> {
+            ComparisonReport report = task.getValue();
+            table.getItems().setAll(report.candidates());
+            updateComparisonChart(chart, report);
+            CandidateComparison winner = report.winner();
+            summary.setText("Best measured candidate: " + winner.candidate().label()
+                    + " (" + formatMedian(winner) + " ms). Results saved to local history.");
+            table.getSelectionModel().select(winner);
+            compare.setDisable(false);
+            progress.setVisible(false);
+        });
+        task.setOnFailed(event -> {
+            Throwable failure = task.getException();
+            summary.setText("Comparison failed: " + (failure == null ? "Unknown error" : failure.getMessage()));
+            compare.setDisable(false);
+            progress.setVisible(false);
+        });
+        Thread worker = new Thread(task, "querylens-alternative-benchmark");
+        worker.setDaemon(true);
+        worker.start();
+    }
+
+    private void updateComparisonChart(BarChart<String, Number> chart, ComparisonReport report) {
+        chart.getData().clear();
+        XYChart.Series<String, Number> series = new XYChart.Series<>();
+        for (CandidateComparison candidate : report.candidates()) {
+            if (candidate.rank() > 0) {
+                series.getData().add(new XYChart.Data<>(candidate.candidate().label(), candidate.medianMilliseconds()));
+            }
+        }
+        chart.getData().add(series);
+    }
+
+    private String candidateDetails(CandidateComparison candidate) {
+        return "SQL:\n" + candidate.candidate().sql() + "\n\n"
+                + "Why generated:\n" + candidate.candidate().rationale() + "\n\n"
+                + "SQLite plan:\n" + String.join("\n", candidate.planSteps()) + "\n\n"
+                + "Explanation:\n" + candidate.explanation();
+    }
+
+    private String formatMedian(CandidateComparison candidate) {
+        return candidate.durationSamplesNs().isEmpty() ? "-"
+                : String.format(Locale.ROOT, "%.3f", candidate.medianMilliseconds());
+    }
+
+    private String formatPercentile(CandidateComparison candidate) {
+        return Double.isNaN(candidate.percentile()) ? "First local run"
+                : String.format(Locale.ROOT, "Beats %.1f%%", candidate.percentile());
     }
 
     private BorderPane createAnalyzerView() {
