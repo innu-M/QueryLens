@@ -101,8 +101,13 @@ The patterns below are in the application/business-logic layers; they are not me
 
 The project includes focused tests for SQL analysis, plan/index inspection, index recommendation behavior, and recommendation-state transitions. Run `mvn test` before submission.
 
-## Submission
+### Submitted to
+## **Mridha MD. Nafis Fuad**
+## Lecturer,IIT ,University of Dhaka
 
-Submitted to course teacher: **Mridha MD. Nafis Fuad**
-
-Done by **Fahmida Munni** (Roll: **BSSE1604**) and **Irin Sultana** (Roll: **BSSE1642**)
+### Submitted by
+### **Fahmida Munni** 
+### (Roll: **BSSE1604**)
+and
+### **Irin Sultana** 
+### (Roll: **BSSE1642**)
