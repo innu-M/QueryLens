@@ -74,6 +74,42 @@ public final class DatabaseManager {
                         )
                         """);
                 statement.executeUpdate("CREATE INDEX IF NOT EXISTS idx_query_history_time ON query_history(execution_time_ms)");
+                statement.executeUpdate("""
+                        CREATE TABLE IF NOT EXISTS comparison_sessions (
+                            comparison_id INTEGER PRIMARY KEY AUTOINCREMENT,
+                            database_path TEXT NOT NULL,
+                            original_sql TEXT NOT NULL,
+                            normalized_query TEXT NOT NULL,
+                            created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+                        )
+                        """);
+                statement.executeUpdate("""
+                        CREATE TABLE IF NOT EXISTS candidate_comparisons (
+                            candidate_id INTEGER PRIMARY KEY AUTOINCREMENT,
+                            comparison_id INTEGER NOT NULL,
+                            label TEXT NOT NULL,
+                            candidate_sql TEXT NOT NULL,
+                            rationale TEXT NOT NULL,
+                            median_duration_ns INTEGER NOT NULL,
+                            equivalent INTEGER NOT NULL,
+                            status TEXT NOT NULL,
+                            rank_position INTEGER NOT NULL,
+                            percentile REAL,
+                            explanation TEXT NOT NULL,
+                            plan_text TEXT NOT NULL,
+                            FOREIGN KEY (comparison_id) REFERENCES comparison_sessions(comparison_id) ON DELETE CASCADE
+                        )
+                        """);
+                statement.executeUpdate("""
+                        CREATE TABLE IF NOT EXISTS benchmark_runs (
+                            benchmark_run_id INTEGER PRIMARY KEY AUTOINCREMENT,
+                            candidate_id INTEGER NOT NULL,
+                            run_number INTEGER NOT NULL,
+                            duration_ns INTEGER NOT NULL,
+                            FOREIGN KEY (candidate_id) REFERENCES candidate_comparisons(candidate_id) ON DELETE CASCADE
+                        )
+                        """);
+                statement.executeUpdate("CREATE INDEX IF NOT EXISTS idx_comparison_query ON comparison_sessions(database_path, normalized_query)");
             }
         } catch (IOException | SQLException exception) {
             throw new IllegalStateException("Could not initialize QueryLens history database.", exception);

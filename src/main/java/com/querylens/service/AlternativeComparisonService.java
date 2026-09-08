@@ -13,7 +13,9 @@ import com.querylens.comparison.PlanExplanationService;
 import com.querylens.comparison.RankingStrategy;
 import com.querylens.comparison.SqlNormalizer;
 import com.querylens.observer.BenchmarkObserver;
+import com.querylens.observer.BenchmarkPersistenceObserver;
 import com.querylens.observer.BenchmarkPublisher;
+import com.querylens.repository.ComparisonHistoryRepository;
 import com.querylens.repository.DatabaseManager;
 import com.querylens.validation.CandidateValidationChain;
 
@@ -30,6 +32,16 @@ public class AlternativeComparisonService {
     private final PlanExplanationService explanations = new PlanExplanationService();
     private final SqlNormalizer normalizer = new SqlNormalizer();
     private final BenchmarkPublisher publisher = new BenchmarkPublisher();
+    private final ComparisonHistoryRepository historyRepository;
+
+    public AlternativeComparisonService() {
+        this(new ComparisonHistoryRepository());
+    }
+
+    public AlternativeComparisonService(ComparisonHistoryRepository historyRepository) {
+        this.historyRepository = historyRepository;
+        publisher.subscribe(new BenchmarkPersistenceObserver(historyRepository));
+    }
 
     public void subscribe(BenchmarkObserver observer) {
         publisher.subscribe(observer);
@@ -71,13 +83,24 @@ public class AlternativeComparisonService {
         }
 
         comparisons = ranking.rank(comparisons);
+        String normalizedQuery = normalizer.normalize(sql);
+        comparisons = comparisons.stream()
+                .map(candidate -> eligibleForPercentile(candidate)
+                        ? candidate.withPercentile(historyRepository.calculatePercentile(
+                                databasePath, normalizedQuery, candidate.medianDurationNs()))
+                        : candidate)
+                .toList();
         CandidateComparison original = comparisons.getFirst();
         List<CandidateComparison> explained = comparisons.stream()
                 .map(candidate -> candidate.withExplanation(explanations.explain(original, candidate)))
                 .toList();
-        ComparisonReport report = new ComparisonReport(databasePath, sql, normalizer.normalize(sql), explained);
+        ComparisonReport report = new ComparisonReport(databasePath, sql, normalizedQuery, explained);
         publisher.comparisonCompleted(report);
         return report;
+    }
+
+    private boolean eligibleForPercentile(CandidateComparison candidate) {
+        return candidate.equivalent() && "VERIFIED".equals(candidate.status());
     }
 
     private CandidateComparison failed(QueryCandidate candidate, String status, String message) {
