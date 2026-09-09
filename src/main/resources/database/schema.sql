@@ -32,3 +32,41 @@ CREATE TABLE IF NOT EXISTS recommendations (
     created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (analysis_id) REFERENCES query_analyses(id) ON DELETE CASCADE
 );
+
+CREATE TABLE IF NOT EXISTS comparison_sessions (
+    id INTEGER PRIMARY KEY,
+    database_path TEXT NOT NULL,
+    original_sql TEXT NOT NULL,
+    ranking_strategy TEXT NOT NULL,
+    created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE IF NOT EXISTS comparison_candidates (
+    id INTEGER PRIMARY KEY,
+    comparison_id INTEGER NOT NULL,
+    label TEXT NOT NULL,
+    sql_text TEXT NOT NULL,
+    median_ns INTEGER NOT NULL,
+    p95_ns INTEGER NOT NULL,
+    equivalent INTEGER NOT NULL CHECK (equivalent IN (0, 1)),
+    status TEXT NOT NULL,
+    rank_position INTEGER NOT NULL DEFAULT 0,
+    explanation TEXT NOT NULL,
+    plan_text TEXT NOT NULL,
+    FOREIGN KEY (comparison_id) REFERENCES comparison_sessions(id) ON DELETE CASCADE
+);
+
+CREATE TABLE IF NOT EXISTS benchmark_runs (
+    id INTEGER PRIMARY KEY,
+    candidate_id INTEGER NOT NULL,
+    run_number INTEGER NOT NULL,
+    duration_ns INTEGER NOT NULL CHECK (duration_ns >= 0),
+    FOREIGN KEY (candidate_id) REFERENCES comparison_candidates(id) ON DELETE CASCADE,
+    UNIQUE (candidate_id, run_number)
+);
+
+CREATE INDEX IF NOT EXISTS idx_comparison_sessions_created
+    ON comparison_sessions(created_at);
+
+CREATE INDEX IF NOT EXISTS idx_comparison_candidates_session
+    ON comparison_candidates(comparison_id);
