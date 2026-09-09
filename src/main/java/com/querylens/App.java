@@ -1,6 +1,7 @@
 package com.querylens;
 
 import com.querylens.persistence.DatabaseInitializer;
+import com.querylens.benchmark.BenchmarkControlsView;
 import javafx.application.Application;
 import javafx.geometry.Insets;
 import javafx.scene.Scene;
@@ -23,9 +24,11 @@ public class App extends Application {
         Label message = new Label("Your local query analysis workspace is ready.");
         Label database = new Label("Workspace database: " + databasePath.toAbsolutePath());
 
-        VBox root = new VBox(12, title, message, database);
+        Label benchmarkHeading = new Label("Benchmark controls");
+        benchmarkHeading.getStyleClass().add("title");
+        VBox root = new VBox(12, title, message, database, benchmarkHeading, new BenchmarkControlsView());
         root.setPadding(new Insets(28));
-        Scene scene = new Scene(root, 620, 260);
+        Scene scene = new Scene(root, 620, 500);
         stage.setTitle("QueryLens");
         stage.setScene(scene);
         stage.show();
