@@ -1,11 +1,15 @@
 package com.querylens;
 
 import com.querylens.persistence.DatabaseInitializer;
+import com.querylens.persistence.ComparisonHistoryRepository;
 import com.querylens.ui.BenchmarkControlsView;
+import com.querylens.ui.ComparisonHistoryView;
 import javafx.application.Application;
 import javafx.geometry.Insets;
 import javafx.scene.Scene;
 import javafx.scene.control.Label;
+import javafx.scene.control.Tab;
+import javafx.scene.control.TabPane;
 import javafx.scene.layout.VBox;
 import javafx.stage.Stage;
 
@@ -18,19 +22,28 @@ public class App extends Application {
         Path databasePath = Path.of("data", "querylens.db");
         new DatabaseInitializer().initialize(databasePath);
 
-        Label title = new Label("QueryLens");
-        title.getStyleClass().add("title");
-        Label message = new Label("Your local query analysis workspace is ready.");
-        Label database = new Label("Workspace database: " + databasePath.toAbsolutePath());
+        TabPane navigation = new TabPane();
+        navigation.getTabs().add(new Tab("Benchmark", createBenchmarkWorkspace(databasePath)));
+        navigation.getTabs().add(new Tab("Comparison History",
+                new ComparisonHistoryView(new ComparisonHistoryRepository(databasePath))));
+        navigation.getTabs().forEach(tab -> tab.setClosable(false));
 
-        Label benchmarkHeading = new Label("Benchmark controls");
-        benchmarkHeading.getStyleClass().add("title");
-        VBox root = new VBox(12, title, message, database, benchmarkHeading, new BenchmarkControlsView());
-        root.setPadding(new Insets(28));
-        Scene scene = new Scene(root, 620, 500);
+        Scene scene = new Scene(navigation, 1180, 760);
         stage.setTitle("QueryLens");
         stage.setScene(scene);
         stage.show();
+    }
+
+    private VBox createBenchmarkWorkspace(Path databasePath) {
+        Label title = new Label("QueryLens");
+        title.setStyle("-fx-font-size: 22px; -fx-font-weight: bold;");
+        Label message = new Label("Your local query analysis workspace is ready.");
+        Label database = new Label("Workspace database: " + databasePath.toAbsolutePath());
+        Label benchmarkHeading = new Label("Benchmark controls");
+        benchmarkHeading.setStyle("-fx-font-size: 18px; -fx-font-weight: bold;");
+        VBox root = new VBox(12, title, message, database, benchmarkHeading, new BenchmarkControlsView());
+        root.setPadding(new Insets(28));
+        return root;
     }
 
     public static void main(String[] args) {
