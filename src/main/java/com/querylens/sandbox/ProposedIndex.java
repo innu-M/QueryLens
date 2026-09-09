@@ -1,6 +1,5 @@
 package com.querylens.sandbox;
 
-/** A validated index proposal that can only be applied to a sandbox copy. */
 public record ProposedIndex(String indexName, String tableName, String columnName) {
     public ProposedIndex {
         if (!isIdentifier(indexName) || !isIdentifier(tableName) || !isIdentifier(columnName)) {

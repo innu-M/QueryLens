@@ -1,7 +1,7 @@
 package com.querylens;
 
 import com.querylens.persistence.DatabaseInitializer;
-import com.querylens.benchmark.BenchmarkControlsView;
+import com.querylens.ui.BenchmarkControlsView;
 import javafx.application.Application;
 import javafx.geometry.Insets;
 import javafx.scene.Scene;
@@ -11,7 +11,6 @@ import javafx.stage.Stage;
 
 import java.nio.file.Path;
 
-/** Entry point for the QueryLens desktop application. */
 public class App extends Application {
 
     @Override

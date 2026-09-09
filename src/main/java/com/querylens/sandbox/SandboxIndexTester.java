@@ -7,7 +7,6 @@ import java.sql.DriverManager;
 import java.sql.ResultSet;
 import java.sql.Statement;
 
-/** Tests a proposed index on a disposable database copy and never modifies the original. */
 public final class SandboxIndexTester {
     public SandboxIndexResult test(Path sourceDatabase, String selectSql, ProposedIndex proposal) {
         if (!selectSql.trim().toUpperCase().startsWith("SELECT")) {

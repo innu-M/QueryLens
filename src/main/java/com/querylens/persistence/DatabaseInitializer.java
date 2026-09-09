@@ -10,7 +10,6 @@ import java.sql.DriverManager;
 import java.sql.SQLException;
 import java.sql.Statement;
 
-/** Creates the local SQLite schema used by QueryLens on first launch. */
 public class DatabaseInitializer {
 
     public void initialize(Path databasePath) {

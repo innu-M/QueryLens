@@ -3,7 +3,6 @@ package com.querylens.benchmark;
 import java.util.Comparator;
 import java.util.List;
 
-/** Summary measurements used to rank one benchmark candidate. */
 public record CandidateMetrics(String candidateLabel, List<Long> durationsNanos) {
     public CandidateMetrics {
         if (candidateLabel == null || candidateLabel.isBlank()) throw new IllegalArgumentException("A candidate label is required.");

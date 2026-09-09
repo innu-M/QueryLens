@@ -1,5 +1,7 @@
-package com.querylens.benchmark;
+package com.querylens.ui;
 
+import com.querylens.benchmark.BenchmarkSettings;
+import com.querylens.benchmark.RankingStrategy;
 import javafx.geometry.Insets;
 import javafx.scene.control.Button;
 import javafx.scene.control.ComboBox;
@@ -11,7 +13,6 @@ import javafx.scene.layout.HBox;
 
 import java.time.Duration;
 
-/** Small settings panel that will be reused by the alternative-plan screen. */
 public final class BenchmarkControlsView extends GridPane {
     private final Spinner<Integer> warmups = new Spinner<>(new SpinnerValueFactory.IntegerSpinnerValueFactory(0, 20, 1));
     private final Spinner<Integer> measuredRuns = new Spinner<>(new SpinnerValueFactory.IntegerSpinnerValueFactory(1, 50, 5));
