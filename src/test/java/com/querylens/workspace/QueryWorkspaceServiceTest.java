@@ -54,6 +54,22 @@ class QueryWorkspaceServiceTest {
     }
 
     @Test
+    void updatesAndDeletesSavedConnections() throws Exception {
+        Path replacementDatabase = directory.resolve("replacement.db");
+        try (var ignored = DriverManager.getConnection("jdbc:sqlite:" + replacementDatabase)) {
+            // Opening SQLite creates a valid empty database file for connection validation.
+        }
+        var saved = service.saveConnection("Original", targetDatabase);
+
+        service.updateConnection(saved.id(), "Replacement", replacementDatabase);
+        assertEquals("Replacement", service.connections().getFirst().displayName());
+        assertEquals(replacementDatabase.toAbsolutePath(), service.connections().getFirst().databasePath());
+
+        service.deleteConnection(saved.id());
+        assertTrue(service.connections().isEmpty());
+    }
+
+    @Test
     void savesRecommendationsAndAllowsOneFinalDecision() {
         QueryExecutionResult result = service.run(targetDatabase, "SELECT * FROM orders WHERE id = 1");
 
@@ -64,6 +80,9 @@ class QueryWorkspaceServiceTest {
         assertEquals(com.querylens.recommendation.model.RecommendationStatus.APPLIED,
                 service.recommendations().stream().filter(item -> item.id() == recommendationId).findFirst().orElseThrow().status());
         assertThrows(IllegalStateException.class, () -> service.dismissRecommendation(recommendationId));
+
+        service.deleteRecommendation(recommendationId);
+        assertTrue(service.recommendations().stream().noneMatch(item -> item.id() == recommendationId));
     }
 
     @Test

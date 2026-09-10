@@ -17,6 +17,7 @@ import javafx.scene.control.TableColumn;
 import javafx.scene.control.TableView;
 import javafx.scene.control.TextArea;
 import javafx.scene.control.TextField;
+import javafx.scene.control.TextInputDialog;
 import javafx.scene.layout.BorderPane;
 import javafx.scene.layout.HBox;
 import javafx.scene.layout.Priority;
@@ -35,6 +36,7 @@ public final class ComparisonHistoryView extends BorderPane {
     private final TableView<ComparisonCandidateEntry> candidates = new TableView<>();
     private final TextArea details = new TextArea();
     private final Button delete = new Button("Delete selected");
+    private final Button rename = new Button("Rename selected");
 
     public ComparisonHistoryView(ComparisonHistoryRepository repository) {
         this.repository = repository;
@@ -50,7 +52,7 @@ public final class ComparisonHistoryView extends BorderPane {
     private VBox createHeader() {
         Label heading = new Label("Comparison History & Reports");
         heading.setStyle("-fx-font-size: 20px; -fx-font-weight: bold;");
-        search.setPromptText("Search SQL or database path");
+        search.setPromptText("Search title, SQL, or database path");
         search.setOnAction(event -> refresh());
         HBox.setHgrow(search, Priority.ALWAYS);
 
@@ -65,9 +67,11 @@ public final class ComparisonHistoryView extends BorderPane {
         refresh.setOnAction(event -> refresh());
         delete.setDisable(true);
         delete.setOnAction(event -> deleteSelected());
+        rename.setDisable(true);
+        rename.setOnAction(event -> renameSelected());
 
         return new VBox(10, heading, summary,
-                new HBox(8, search, searchButton, clear, refresh, delete));
+                new HBox(8, search, searchButton, clear, refresh, rename, delete));
     }
 
     private SplitPane createContent() {
@@ -91,6 +95,7 @@ public final class ComparisonHistoryView extends BorderPane {
     private void configureTables() {
         sessions.getSelectionModel().setSelectionMode(SelectionMode.SINGLE);
         sessions.setPlaceholder(new Label("No saved comparisons match this search."));
+        sessions.getColumns().add(column("Title", 180, ComparisonSessionEntry::title));
         sessions.getColumns().add(column("SQL", 260, ComparisonSessionEntry::originalSql));
         sessions.getColumns().add(column("Winner", 130, ComparisonSessionEntry::winnerLabel));
         sessions.getColumns().add(column("Candidates", 85, entry -> entry.candidateCount()));
@@ -125,6 +130,7 @@ public final class ComparisonHistoryView extends BorderPane {
             candidates.getItems().clear();
             details.clear();
             delete.setDisable(true);
+            rename.setDisable(true);
             updateSummary();
             status.setText(sessions.getItems().size() + " comparison(s) shown.");
         } catch (IllegalStateException exception) {
@@ -144,6 +150,7 @@ public final class ComparisonHistoryView extends BorderPane {
         candidates.getItems().clear();
         details.clear();
         delete.setDisable(selected == null);
+        rename.setDisable(selected == null);
         if (selected == null) return;
         try {
             candidates.setItems(FXCollections.observableArrayList(repository.findCandidates(selected.id())));
@@ -151,6 +158,24 @@ public final class ComparisonHistoryView extends BorderPane {
         } catch (IllegalStateException exception) {
             showError("Could not load candidates", exception.getMessage());
         }
+    }
+
+    private void renameSelected() {
+        ComparisonSessionEntry selected = sessions.getSelectionModel().getSelectedItem();
+        if (selected == null) return;
+        TextInputDialog dialog = new TextInputDialog(selected.title());
+        dialog.setTitle("Rename comparison");
+        dialog.setHeaderText("Give this comparison a descriptive title");
+        dialog.setContentText("Title:");
+        dialog.showAndWait().ifPresent(title -> {
+            try {
+                repository.rename(selected.id(), title);
+                refresh();
+                status.setText("Comparison renamed.");
+            } catch (Exception exception) {
+                showError("Could not rename comparison", exception.getMessage());
+            }
+        });
     }
 
     private void showCandidateDetails(ComparisonCandidateEntry candidate) {

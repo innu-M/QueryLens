@@ -67,6 +67,18 @@ public final class RecommendationRepository extends AbstractWorkspaceRepository 
         }
     }
 
+    public void delete(long id) {
+        try (var connection = openConnection();
+             var statement = connection.prepareStatement("DELETE FROM recommendations WHERE id = ?")) {
+            statement.setLong(1, id);
+            if (statement.executeUpdate() == 0) throw new IllegalArgumentException("Recommendation not found.");
+        } catch (IllegalArgumentException exception) {
+            throw exception;
+        } catch (Exception exception) {
+            throw new IllegalStateException("Could not delete recommendation.", exception);
+        }
+    }
+
     private Recommendation save(long analysisId, String message) {
         String insert = "INSERT INTO recommendations(analysis_id, message) VALUES (?, ?)";
         try (var connection = openConnection();
@@ -88,5 +100,4 @@ public final class RecommendationRepository extends AbstractWorkspaceRepository 
                 RecommendationStatus.valueOf(row.getString("status")));
     }
 }
-
 

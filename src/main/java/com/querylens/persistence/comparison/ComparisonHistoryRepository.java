@@ -18,14 +18,14 @@ import java.util.List;
 
 public class ComparisonHistoryRepository {
     private static final String SESSION_QUERY = """
-            SELECT s.id, s.database_path, s.original_sql, s.ranking_strategy, s.created_at,
+            SELECT s.id, s.title, s.database_path, s.original_sql, s.ranking_strategy, s.created_at,
                    COUNT(c.id) AS candidate_count,
                    COALESCE(MAX(CASE WHEN c.rank_position = 1 THEN c.label END), '') AS winner_label,
                    COALESCE(MAX(CASE WHEN LOWER(c.label) = 'original' THEN c.median_ns END), 0) AS original_median,
                    COALESCE(MAX(CASE WHEN c.rank_position = 1 THEN c.median_ns END), 0) AS winner_median
               FROM comparison_sessions s
               LEFT JOIN comparison_candidates c ON c.comparison_id = s.id
-             WHERE (? = '' OR LOWER(s.original_sql) LIKE ? OR LOWER(s.database_path) LIKE ?)
+             WHERE (? = '' OR LOWER(s.title) LIKE ? OR LOWER(s.original_sql) LIKE ? OR LOWER(s.database_path) LIKE ?)
              GROUP BY s.id
              ORDER BY s.created_at DESC, s.id DESC
             """;
@@ -65,10 +65,12 @@ public class ComparisonHistoryRepository {
             statement.setString(1, normalized);
             statement.setString(2, pattern);
             statement.setString(3, pattern);
+            statement.setString(4, pattern);
             try (ResultSet result = statement.executeQuery()) {
                 while (result.next()) {
                     sessions.add(new ComparisonSessionEntry(
                             result.getLong("id"),
+                            result.getString("title"),
                             result.getString("database_path"),
                             result.getString("original_sql"),
                             result.getString("ranking_strategy"),
@@ -159,15 +161,37 @@ public class ComparisonHistoryRepository {
         }
     }
 
+    public void rename(long comparisonId, String title) {
+        if (title == null || title.isBlank()) throw new IllegalArgumentException("Enter a comparison title.");
+        String sql = "UPDATE comparison_sessions SET title = ? WHERE id = ?";
+        try (Connection connection = openConnection();
+             PreparedStatement statement = connection.prepareStatement(sql)) {
+            statement.setString(1, title.strip());
+            statement.setLong(2, comparisonId);
+            if (statement.executeUpdate() == 0) throw new IllegalArgumentException("Comparison session not found.");
+        } catch (IllegalArgumentException exception) {
+            throw exception;
+        } catch (SQLException exception) {
+            throw persistenceFailure("rename comparison history", exception);
+        }
+    }
+
     private long insertSession(Connection connection, ComparisonDraft draft) throws SQLException {
-        String sql = "INSERT INTO comparison_sessions(database_path, original_sql, ranking_strategy) VALUES (?, ?, ?)";
+        String sql = "INSERT INTO comparison_sessions(title, database_path, original_sql, ranking_strategy) VALUES (?, ?, ?, ?)";
         try (PreparedStatement statement = connection.prepareStatement(sql, Statement.RETURN_GENERATED_KEYS)) {
-            statement.setString(1, draft.databasePath());
-            statement.setString(2, draft.originalSql());
-            statement.setString(3, draft.rankingStrategy().name());
+            statement.setString(1, defaultTitle(draft.originalSql()));
+            statement.setString(2, draft.databasePath());
+            statement.setString(3, draft.originalSql());
+            statement.setString(4, draft.rankingStrategy().name());
             statement.executeUpdate();
             return generatedId(statement, "comparison session");
         }
+    }
+
+    private String defaultTitle(String sql) {
+        String compact = sql == null ? "Comparison" : sql.strip().replaceAll("\\s+", " ");
+        if (compact.isBlank()) return "Comparison";
+        return compact.length() <= 60 ? compact : compact.substring(0, 57) + "...";
     }
 
     private long insertCandidate(Connection connection, long sessionId, ComparisonCandidateDraft candidate)

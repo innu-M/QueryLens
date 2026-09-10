@@ -5,6 +5,7 @@ import com.querylens.alternative.service.AlternativeQueryGenerator;
 import com.querylens.alternative.adapter.SQLiteIndexCatalogProvider;
 import com.querylens.alternative.adapter.SQLiteBenchmarkExecutor;
 import com.querylens.persistence.core.DatabaseInitializer;
+import com.querylens.persistence.core.DemoDataSeeder;
 import com.querylens.persistence.comparison.ComparisonHistoryRepository;
 import com.querylens.plan.service.PlanComparisonService;
 import com.querylens.plan.adapter.SQLiteQueryPlanInspector;
@@ -35,6 +36,7 @@ public class App extends Application {
     public void start(Stage stage) {
         Path databasePath = Path.of("data", "querylens.db");
         new DatabaseInitializer().initialize(databasePath);
+        new DemoDataSeeder().seed(databasePath);
         ComparisonHistoryRepository historyRepository = new ComparisonHistoryRepository(databasePath);
         QueryWorkspaceService workspaceService = new QueryWorkspaceService(databasePath);
         QueryWorkspaceView workspaceView = new QueryWorkspaceView(workspaceService);
@@ -86,4 +88,3 @@ public class App extends Application {
         launch(args);
     }
 }
-

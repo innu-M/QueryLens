@@ -17,6 +17,7 @@ import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class WorkspacePersistenceRepositoryTest {
     @TempDir
@@ -51,6 +52,26 @@ class WorkspacePersistenceRepositoryTest {
     }
 
     @Test
+    void supportsCompleteConnectionCrud() {
+        Path originalDatabase = temporaryDirectory.resolve("original.db");
+        Path replacementDatabase = temporaryDirectory.resolve("replacement.db");
+
+        var saved = connections.save("Original", originalDatabase);
+        assertEquals("Original", connections.findAll().getFirst().displayName());
+
+        var updated = connections.update(saved.id(), "Updated", replacementDatabase);
+        assertEquals("Updated", updated.displayName());
+        assertEquals(replacementDatabase.toAbsolutePath(), updated.databasePath());
+        assertEquals("Updated", connections.findAll().getFirst().displayName());
+
+        connections.delete(saved.id());
+        assertTrue(connections.findAll().isEmpty());
+        assertThrows(IllegalArgumentException.class,
+                () -> connections.update(saved.id(), "Missing", originalDatabase));
+        assertThrows(IllegalArgumentException.class, () -> connections.delete(saved.id()));
+    }
+
+    @Test
     void savesHistoryAndReturnsMostRecentEntriesFirst() {
         long firstId = history.save("SELECT * FROM orders", SqlQueryType.SELECT, 8);
         long secondId = history.save("UPDATE orders SET status = 'DONE'", SqlQueryType.UPDATE, 11);
@@ -73,6 +94,9 @@ class WorkspacePersistenceRepositoryTest {
         assertEquals(2, recommendations.findAll().size());
         assertEquals(RecommendationStatus.APPLIED, recommendations.findById(saved.getFirst().id()).status());
         assertEquals(analysisId, recommendations.findById(saved.get(1).id()).analysisId());
+        recommendations.delete(saved.get(1).id());
+        assertEquals(1, recommendations.findAll().size());
+        assertThrows(IllegalArgumentException.class, () -> recommendations.findById(saved.get(1).id()));
         assertThrows(IllegalArgumentException.class, () -> recommendations.findById(999));
     }
 
