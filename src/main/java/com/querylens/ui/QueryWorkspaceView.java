@@ -30,6 +30,7 @@ public final class QueryWorkspaceView extends VBox {
     private final TextArea sql = new TextArea();
     private final Label status = new Label("Choose a saved database connection, then run a query.");
     private final Label analysis = new Label();
+    private final Label suggestions = new Label();
     private final TableView<List<String>> rows = new TableView<>();
     private final TableView<QueryHistoryEntry> history = new TableView<>();
     private final Button run = new Button("Run query");
@@ -39,7 +40,7 @@ public final class QueryWorkspaceView extends VBox {
         setSpacing(10);
         setPadding(new Insets(16));
         SplitPane resultsPane = createResults();
-        getChildren().addAll(createInput(), status, analysis, resultsPane);
+        getChildren().addAll(createInput(), status, analysis, suggestions, resultsPane);
         VBox.setVgrow(resultsPane, Priority.ALWAYS);
         configureHistory();
         refreshConnections();
@@ -151,6 +152,9 @@ public final class QueryWorkspaceView extends VBox {
         }
         analysis.setText("Analysis: " + result.analysis().queryType() + " • " + result.analysis().riskLevel()
                 + " risk • complexity " + result.analysis().complexityScore() + " • tables: " + result.analysis().tables());
+        suggestions.setText(result.recommendations().isEmpty()
+                ? "No recommendations for this query."
+                : "Suggestions: " + String.join("  •  ", result.recommendations().stream().map(item -> item.message()).toList()));
         refreshHistory();
     }
 

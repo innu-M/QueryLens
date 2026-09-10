@@ -6,6 +6,7 @@ import com.querylens.workspace.SqlQueryType;
 import java.nio.file.Path;
 import java.sql.DriverManager;
 import java.sql.ResultSet;
+import java.sql.Statement;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -16,14 +17,18 @@ public final class QueryHistoryRepository {
         this.workspaceDatabase = workspaceDatabase;
     }
 
-    public void save(String sql, SqlQueryType type, long durationMillis) {
+    public long save(String sql, SqlQueryType type, long durationMillis) {
         String insert = "INSERT INTO query_history(sql_text, query_type, duration_ms) VALUES (?, ?, ?)";
         try (var connection = DriverManager.getConnection(url());
-             var statement = connection.prepareStatement(insert)) {
+             var statement = connection.prepareStatement(insert, Statement.RETURN_GENERATED_KEYS)) {
             statement.setString(1, sql);
             statement.setString(2, type.name());
             statement.setLong(3, durationMillis);
             statement.executeUpdate();
+            try (ResultSet keys = statement.getGeneratedKeys()) {
+                if (keys.next()) return keys.getLong(1);
+            }
+            throw new IllegalStateException("Could not retrieve query history ID.");
         } catch (Exception exception) {
             throw new IllegalStateException("Could not save query history.", exception);
         }
