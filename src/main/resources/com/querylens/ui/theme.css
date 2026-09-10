@@ -1,0 +1,81 @@
+.root {
+    -fx-font-family: "Segoe UI", Arial, sans-serif;
+    -fx-background-color: #fffaf4;
+    -fx-text-fill: #3f3a40;
+}
+
+.tab-pane {
+    -fx-background-color: #fffaf4;
+    -fx-padding: 8;
+}
+
+.tab-pane .tab-header-area .tab-header-background {
+    -fx-background-color: #f8e7ec;
+    -fx-background-radius: 10;
+}
+
+.tab-pane .tab {
+    -fx-background-color: transparent;
+    -fx-padding: 8 14;
+}
+
+.tab-pane .tab:selected {
+    -fx-background-color: #ffffff;
+    -fx-background-radius: 8 8 0 0;
+}
+
+.tab-pane .tab-label {
+    -fx-text-fill: #6b4d5b;
+    -fx-font-weight: 600;
+}
+
+.label {
+    -fx-text-fill: #463d43;
+}
+
+.page-title {
+    -fx-font-size: 24px;
+    -fx-font-weight: 700;
+    -fx-text-fill: #a34569;
+}
+
+.section-title {
+    -fx-font-size: 18px;
+    -fx-font-weight: 700;
+    -fx-text-fill: #4f8a6c;
+}
+
+.button {
+    -fx-background-color: #78ad8a;
+    -fx-text-fill: white;
+    -fx-font-weight: 700;
+    -fx-background-radius: 8;
+    -fx-padding: 8 14;
+    -fx-cursor: hand;
+}
+
+.button:hover {
+    -fx-background-color: #5f9673;
+}
+
+.text-field, .text-area, .combo-box, .spinner {
+    -fx-background-color: #ffffff;
+    -fx-border-color: #e7becb;
+    -fx-border-radius: 7;
+    -fx-background-radius: 7;
+}
+
+.table-view, .tree-view, .split-pane {
+    -fx-background-color: #ffffff;
+    -fx-border-color: #f0d9e0;
+    -fx-border-radius: 8;
+}
+
+.table-view .column-header-background {
+    -fx-background-color: #f9e9ed;
+}
+
+.progress-bar .bar {
+    -fx-background-color: #78ad8a;
+    -fx-background-radius: 8;
+}
