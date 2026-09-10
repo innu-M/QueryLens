@@ -7,7 +7,7 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 
-public final class AlternativeQueryGenerator {
+public final class AlternativeQueryGenerator implements QueryCandidateGenerator {
     private final SafeSelectParser parser;
     private final IndexCatalogProvider indexCatalog;
     private final List<AlternativeQueryStrategy> strategies;
@@ -23,6 +23,7 @@ public final class AlternativeQueryGenerator {
         this.strategies = List.copyOf(strategies);
     }
 
+    @Override
     public List<GeneratedQueryCandidate> generate(Path databasePath, String sql, int maximumCandidates) {
         if (databasePath == null || !Files.isRegularFile(databasePath)) {
             throw new IllegalArgumentException("Choose an existing SQLite database file.");

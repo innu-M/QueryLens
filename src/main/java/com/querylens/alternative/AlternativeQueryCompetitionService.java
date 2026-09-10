@@ -20,14 +20,14 @@ import java.util.Map;
 import java.util.concurrent.atomic.AtomicReference;
 
 public final class AlternativeQueryCompetitionService {
-    private final AlternativeQueryGenerator generator;
+    private final QueryCandidateGenerator generator;
     private final SQLiteReadOnlyQueryExecutor executor;
     private final QueryPlanProvider planProvider;
     private final ComparisonHistoryRepository historyRepository;
     private volatile CancellableBenchmarkRunner activeRunner;
 
     public AlternativeQueryCompetitionService(
-            AlternativeQueryGenerator generator,
+            QueryCandidateGenerator generator,
             SQLiteReadOnlyQueryExecutor executor,
             QueryPlanProvider planProvider,
             ComparisonHistoryRepository historyRepository) {

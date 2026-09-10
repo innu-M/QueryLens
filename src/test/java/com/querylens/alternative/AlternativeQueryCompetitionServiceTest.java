@@ -14,6 +14,7 @@ import java.sql.Connection;
 import java.sql.DriverManager;
 import java.sql.Statement;
 import java.time.Duration;
+import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
@@ -60,5 +61,27 @@ class AlternativeQueryCompetitionServiceTest {
         assertFalse(result.winner().planText().isBlank());
         assertEquals(1, history.findSessions("").size());
         assertEquals(result.candidates().size(), history.findCandidates(result.comparisonId()).size());
+    }
+
+    @Test
+    void rejectsCandidateWithDifferentResultsBeforeBenchmarking() {
+        QueryCandidateGenerator generator = (database, sql, maximum) -> List.of(
+                new GeneratedQueryCandidate("Original", sql, "Original query."),
+                new GeneratedQueryCandidate("Changed result",
+                        "SELECT name FROM sailors WHERE rating = 8", "Unsafe test candidate."));
+        AlternativeQueryCompetitionService service = new AlternativeQueryCompetitionService(
+                generator, new SQLiteReadOnlyQueryExecutor(),
+                (database, sql) -> List.of(new com.querylens.plan.QueryPlanRow(1, 0, "SCAN sailors")), history);
+        BenchmarkSettings settings = new BenchmarkSettings(0, 1, Duration.ofSeconds(2), 5, RankingStrategy.MEDIAN);
+
+        AlternativeCompetitionResult result = service.compete(
+                targetDatabase, "SELECT name FROM sailors WHERE rating = 10", settings, progress -> { });
+
+        CompetitionCandidate rejected = result.candidates().get(1);
+        assertFalse(rejected.equivalent());
+        assertEquals("REJECTED_NOT_EQUIVALENT", rejected.status());
+        assertEquals(0, rejected.rank());
+        assertTrue(rejected.samplesNs().isEmpty());
+        assertEquals(0, history.findCandidates(result.comparisonId()).get(1).sampleCount());
     }
 }
