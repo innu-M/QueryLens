@@ -2,8 +2,11 @@ package com.querylens;
 
 import com.querylens.persistence.DatabaseInitializer;
 import com.querylens.persistence.ComparisonHistoryRepository;
+import com.querylens.plan.PlanComparisonService;
+import com.querylens.plan.SQLiteQueryPlanInspector;
 import com.querylens.ui.BenchmarkControlsView;
 import com.querylens.ui.ComparisonHistoryView;
+import com.querylens.ui.PlanTreeComparisonView;
 import javafx.application.Application;
 import javafx.geometry.Insets;
 import javafx.scene.Scene;
@@ -26,6 +29,8 @@ public class App extends Application {
         navigation.getTabs().add(new Tab("Benchmark", createBenchmarkWorkspace(databasePath)));
         navigation.getTabs().add(new Tab("Comparison History",
                 new ComparisonHistoryView(new ComparisonHistoryRepository(databasePath))));
+        navigation.getTabs().add(new Tab("Plan Trees",
+                new PlanTreeComparisonView(new PlanComparisonService(new SQLiteQueryPlanInspector()))));
         navigation.getTabs().forEach(tab -> tab.setClosable(false));
 
         Scene scene = new Scene(navigation, 1180, 760);
