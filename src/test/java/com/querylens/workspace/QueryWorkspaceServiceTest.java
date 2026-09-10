@@ -46,7 +46,21 @@ class QueryWorkspaceServiceTest {
         assertEquals(1, result.rows().size());
         assertEquals(SqlQueryType.SELECT, result.analysis().queryType());
         assertEquals(List.of("orders"), result.analysis().tables());
+        assertEquals(List.of("id"), result.analysis().filteredColumns());
         assertEquals(1, service.recentHistory().size());
+    }
+
+    @Test
+    void savesRecommendationsAndAllowsOneFinalDecision() {
+        QueryExecutionResult result = service.run(targetDatabase, "SELECT * FROM orders WHERE id = 1");
+
+        assertEquals(2, result.recommendations().size());
+        long recommendationId = result.recommendations().getFirst().id();
+        service.applyRecommendation(recommendationId);
+
+        assertEquals(com.querylens.recommendation.RecommendationStatus.APPLIED,
+                service.recommendations().stream().filter(item -> item.id() == recommendationId).findFirst().orElseThrow().status());
+        assertThrows(IllegalStateException.class, () -> service.dismissRecommendation(recommendationId));
     }
 
     @Test

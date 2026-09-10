@@ -8,10 +8,13 @@ public record QueryAnalysis(
         int joinCount,
         boolean hasWhereClause,
         boolean selectsAllColumns,
+        List<String> filteredColumns,
+        boolean hasOrderingOrGrouping,
         int complexityScore,
         String riskLevel) {
 
     public QueryAnalysis {
         tables = List.copyOf(tables);
+        filteredColumns = List.copyOf(filteredColumns);
     }
 }

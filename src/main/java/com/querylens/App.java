@@ -14,6 +14,7 @@ import com.querylens.ui.ComparisonHistoryView;
 import com.querylens.ui.PlanTreeComparisonView;
 import com.querylens.ui.ConnectionsView;
 import com.querylens.ui.QueryWorkspaceView;
+import com.querylens.ui.RecommendationsView;
 import com.querylens.workspace.QueryWorkspaceService;
 import javafx.application.Application;
 import javafx.geometry.Insets;
@@ -41,6 +42,7 @@ public class App extends Application {
         TabPane navigation = new TabPane();
         navigation.getTabs().add(new Tab("Query Workspace", workspaceView));
         navigation.getTabs().add(new Tab("Connections", new ConnectionsView(workspaceService, workspaceView::refreshConnections)));
+        navigation.getTabs().add(new Tab("Recommendations", new RecommendationsView(workspaceService)));
         navigation.getTabs().add(new Tab("Benchmark", createBenchmarkWorkspace(databasePath)));
         AlternativeQueryCompetitionService competitionService = new AlternativeQueryCompetitionService(
                 new AlternativeQueryGenerator(new SQLiteIndexCatalogProvider()),
