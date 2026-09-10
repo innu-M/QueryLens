@@ -55,9 +55,10 @@ public final class AlternativeQueryCompetitionService {
                         new AtomicReference<>(equivalent ? BenchmarkProgress.Status.MEASURING : BenchmarkProgress.Status.FAILED);
                 List<Long> samples = List.of();
                 if (equivalent) {
-                    try {
+                    try (SQLiteReadOnlyQueryExecutor.PreparedSelect prepared = executor.prepare(
+                            databasePath, candidate.sql(), settings.queryTimeout())) {
                         samples = runner.run(candidate.label(),
-                                () -> executor.executeAndConsume(databasePath, candidate.sql(), settings.queryTimeout()),
+                                prepared::execute,
                                 settings,
                                 progress -> {
                                     finalStatus.set(progress.status());

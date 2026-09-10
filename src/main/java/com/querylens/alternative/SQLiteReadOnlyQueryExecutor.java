@@ -7,6 +7,8 @@ import java.sql.Connection;
 import java.sql.DriverManager;
 import java.sql.ResultSet;
 import java.sql.ResultSetMetaData;
+import java.sql.PreparedStatement;
+import java.sql.SQLException;
 import java.sql.Statement;
 import java.time.Duration;
 import java.util.ArrayList;
@@ -36,17 +38,26 @@ public final class SQLiteReadOnlyQueryExecutor {
     }
 
     public void executeAndConsume(Path databasePath, String sql, Duration timeout) {
-        try (Connection connection = connect(databasePath);
-             Statement statement = connection.createStatement()) {
-            statement.setQueryTimeout(timeoutSeconds(timeout));
-            try (ResultSet result = statement.executeQuery(sql)) {
-                int columns = result.getMetaData().getColumnCount();
-                while (result.next()) {
-                    for (int column = 1; column <= columns; column++) result.getObject(column);
-                }
-            }
+        try (PreparedSelect select = prepare(databasePath, sql, timeout)) {
+            select.execute();
         } catch (Exception exception) {
             throw new IllegalStateException("Could not execute a benchmark candidate.", exception);
+        }
+    }
+
+    public PreparedSelect prepare(Path databasePath, String sql, Duration timeout) {
+        try {
+            Connection connection = connect(databasePath);
+            try {
+                PreparedStatement statement = connection.prepareStatement(sql);
+                statement.setQueryTimeout(timeoutSeconds(timeout));
+                return new PreparedSelect(connection, statement);
+            } catch (Exception exception) {
+                connection.close();
+                throw exception;
+            }
+        } catch (Exception exception) {
+            throw new IllegalStateException("Could not prepare a benchmark candidate.", exception);
         }
     }
 
@@ -82,5 +93,38 @@ public final class SQLiteReadOnlyQueryExecutor {
 
     private void append(StringBuilder target, String value) {
         target.append(value.length()).append(':').append(value).append('|');
+    }
+
+    public static final class PreparedSelect implements AutoCloseable {
+        private final Connection connection;
+        private final PreparedStatement statement;
+
+        private PreparedSelect(Connection connection, PreparedStatement statement) {
+            this.connection = connection;
+            this.statement = statement;
+        }
+
+        public void execute() {
+            try (ResultSet result = statement.executeQuery()) {
+                int columns = result.getMetaData().getColumnCount();
+                while (result.next()) {
+                    for (int column = 1; column <= columns; column++) result.getObject(column);
+                }
+            } catch (SQLException exception) {
+                throw new IllegalStateException("Could not execute a prepared benchmark candidate.", exception);
+            }
+        }
+
+        @Override
+        public void close() {
+            try {
+                statement.close();
+            } catch (SQLException ignored) {
+            }
+            try {
+                connection.close();
+            } catch (SQLException ignored) {
+            }
+        }
     }
 }
