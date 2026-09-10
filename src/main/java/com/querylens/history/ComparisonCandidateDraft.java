@@ -18,7 +18,6 @@ public record ComparisonCandidateDraft(
         if (label == null || label.isBlank()) throw new IllegalArgumentException("A candidate label is required.");
         if (sql == null || sql.isBlank()) throw new IllegalArgumentException("Candidate SQL is required.");
         durationSamplesNs = List.copyOf(durationSamplesNs);
-        if (durationSamplesNs.isEmpty()) throw new IllegalArgumentException("At least one benchmark sample is required.");
         if (durationSamplesNs.stream().anyMatch(value -> value == null || value < 0)) {
             throw new IllegalArgumentException("Benchmark samples must be non-negative.");
         }
@@ -29,10 +28,12 @@ public record ComparisonCandidateDraft(
     }
 
     public long medianNs() {
+        if (durationSamplesNs.isEmpty()) return 0;
         return new CandidateMetrics(label, durationSamplesNs).medianNanos();
     }
 
     public long p95Ns() {
+        if (durationSamplesNs.isEmpty()) return 0;
         return new CandidateMetrics(label, durationSamplesNs).p95Nanos();
     }
 }

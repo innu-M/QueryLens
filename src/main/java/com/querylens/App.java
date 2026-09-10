@@ -1,9 +1,17 @@
 package com.querylens;
 
+import com.querylens.alternative.AlternativeQueryCompetitionService;
+import com.querylens.alternative.AlternativeQueryGenerator;
+import com.querylens.alternative.SQLiteIndexCatalogProvider;
+import com.querylens.alternative.SQLiteReadOnlyQueryExecutor;
 import com.querylens.persistence.DatabaseInitializer;
 import com.querylens.persistence.ComparisonHistoryRepository;
+import com.querylens.plan.PlanComparisonService;
+import com.querylens.plan.SQLiteQueryPlanInspector;
 import com.querylens.ui.BenchmarkControlsView;
+import com.querylens.ui.AlternativeCompetitionView;
 import com.querylens.ui.ComparisonHistoryView;
+import com.querylens.ui.PlanTreeComparisonView;
 import javafx.application.Application;
 import javafx.geometry.Insets;
 import javafx.scene.Scene;
@@ -21,11 +29,21 @@ public class App extends Application {
     public void start(Stage stage) {
         Path databasePath = Path.of("data", "querylens.db");
         new DatabaseInitializer().initialize(databasePath);
+        ComparisonHistoryRepository historyRepository = new ComparisonHistoryRepository(databasePath);
 
         TabPane navigation = new TabPane();
         navigation.getTabs().add(new Tab("Benchmark", createBenchmarkWorkspace(databasePath)));
+        AlternativeQueryCompetitionService competitionService = new AlternativeQueryCompetitionService(
+                new AlternativeQueryGenerator(new SQLiteIndexCatalogProvider()),
+                new SQLiteReadOnlyQueryExecutor(),
+                new SQLiteQueryPlanInspector(),
+                historyRepository);
+        navigation.getTabs().add(new Tab("Alternative Competition",
+                new AlternativeCompetitionView(competitionService)));
         navigation.getTabs().add(new Tab("Comparison History",
-                new ComparisonHistoryView(new ComparisonHistoryRepository(databasePath))));
+                new ComparisonHistoryView(historyRepository)));
+        navigation.getTabs().add(new Tab("Plan Trees",
+                new PlanTreeComparisonView(new PlanComparisonService(new SQLiteQueryPlanInspector()))));
         navigation.getTabs().forEach(tab -> tab.setClosable(false));
 
         Scene scene = new Scene(navigation, 1180, 760);
