@@ -12,6 +12,9 @@ import com.querylens.ui.BenchmarkControlsView;
 import com.querylens.ui.AlternativeCompetitionView;
 import com.querylens.ui.ComparisonHistoryView;
 import com.querylens.ui.PlanTreeComparisonView;
+import com.querylens.ui.ConnectionsView;
+import com.querylens.ui.QueryWorkspaceView;
+import com.querylens.workspace.QueryWorkspaceService;
 import javafx.application.Application;
 import javafx.geometry.Insets;
 import javafx.scene.Scene;
@@ -32,8 +35,12 @@ public class App extends Application {
         Path databasePath = Path.of("data", "querylens.db");
         new DatabaseInitializer().initialize(databasePath);
         ComparisonHistoryRepository historyRepository = new ComparisonHistoryRepository(databasePath);
+        QueryWorkspaceService workspaceService = new QueryWorkspaceService(databasePath);
+        QueryWorkspaceView workspaceView = new QueryWorkspaceView(workspaceService);
 
         TabPane navigation = new TabPane();
+        navigation.getTabs().add(new Tab("Query Workspace", workspaceView));
+        navigation.getTabs().add(new Tab("Connections", new ConnectionsView(workspaceService, workspaceView::refreshConnections)));
         navigation.getTabs().add(new Tab("Benchmark", createBenchmarkWorkspace(databasePath)));
         AlternativeQueryCompetitionService competitionService = new AlternativeQueryCompetitionService(
                 new AlternativeQueryGenerator(new SQLiteIndexCatalogProvider()),

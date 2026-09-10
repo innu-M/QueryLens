@@ -1,0 +1,53 @@
+package com.querylens.persistence;
+
+import com.querylens.workspace.QueryHistoryEntry;
+import com.querylens.workspace.SqlQueryType;
+
+import java.nio.file.Path;
+import java.sql.DriverManager;
+import java.sql.ResultSet;
+import java.util.ArrayList;
+import java.util.List;
+
+public final class QueryHistoryRepository {
+    private final Path workspaceDatabase;
+
+    public QueryHistoryRepository(Path workspaceDatabase) {
+        this.workspaceDatabase = workspaceDatabase;
+    }
+
+    public void save(String sql, SqlQueryType type, long durationMillis) {
+        String insert = "INSERT INTO query_history(sql_text, query_type, duration_ms) VALUES (?, ?, ?)";
+        try (var connection = DriverManager.getConnection(url());
+             var statement = connection.prepareStatement(insert)) {
+            statement.setString(1, sql);
+            statement.setString(2, type.name());
+            statement.setLong(3, durationMillis);
+            statement.executeUpdate();
+        } catch (Exception exception) {
+            throw new IllegalStateException("Could not save query history.", exception);
+        }
+    }
+
+    public List<QueryHistoryEntry> recent(int limit) {
+        List<QueryHistoryEntry> entries = new ArrayList<>();
+        String query = "SELECT id, sql_text, query_type, duration_ms, executed_at FROM query_history ORDER BY id DESC LIMIT ?";
+        try (var connection = DriverManager.getConnection(url());
+             var statement = connection.prepareStatement(query)) {
+            statement.setInt(1, limit);
+            try (ResultSet rows = statement.executeQuery()) {
+                while (rows.next()) {
+                    entries.add(new QueryHistoryEntry(rows.getLong("id"), rows.getString("sql_text"),
+                            SqlQueryType.valueOf(rows.getString("query_type")), rows.getLong("duration_ms"), rows.getString("executed_at")));
+                }
+            }
+            return List.copyOf(entries);
+        } catch (Exception exception) {
+            throw new IllegalStateException("Could not load query history.", exception);
+        }
+    }
+
+    private String url() {
+        return "jdbc:sqlite:" + workspaceDatabase.toAbsolutePath();
+    }
+}
