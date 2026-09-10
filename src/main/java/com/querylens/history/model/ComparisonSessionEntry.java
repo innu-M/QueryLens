@@ -2,6 +2,7 @@ package com.querylens.history.model;
 
 public record ComparisonSessionEntry(
         long id,
+        String title,
         String databasePath,
         String originalSql,
         String rankingStrategy,

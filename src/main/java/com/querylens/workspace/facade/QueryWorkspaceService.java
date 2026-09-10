@@ -42,13 +42,21 @@ public final class QueryWorkspaceService {
     }
 
     public SavedConnection saveConnection(String displayName, Path databasePath) {
-        if (displayName == null || displayName.isBlank()) throw new IllegalArgumentException("Enter a name for this connection.");
-        if (databasePath == null || !Files.isRegularFile(databasePath)) throw new IllegalArgumentException("Choose an existing SQLite database file.");
+        validateConnection(displayName, databasePath);
         return connections.save(displayName, databasePath);
     }
 
     public List<SavedConnection> connections() {
         return connections.findAll();
+    }
+
+    public SavedConnection updateConnection(long id, String displayName, Path databasePath) {
+        validateConnection(displayName, databasePath);
+        return connections.update(id, displayName, databasePath);
+    }
+
+    public void deleteConnection(long id) {
+        connections.delete(id);
     }
 
     public List<QueryHistoryEntry> recentHistory() {
@@ -67,6 +75,10 @@ public final class QueryWorkspaceService {
         updateRecommendation(id, false);
     }
 
+    public void deleteRecommendation(long id) {
+        recommendations.delete(id);
+    }
+
     public boolean requiresMutationConfirmation(String sql) {
         return executionWorkflow.requiresMutationConfirmation(sql);
     }
@@ -80,6 +92,11 @@ public final class QueryWorkspaceService {
         RecommendationState current = RecommendationStateFactory.from(recommendation.status());
         RecommendationState next = apply ? current.apply() : current.dismiss();
         recommendations.updateStatus(id, next.status());
+    }
+
+    private void validateConnection(String displayName, Path databasePath) {
+        if (displayName == null || displayName.isBlank()) throw new IllegalArgumentException("Enter a name for this connection.");
+        if (databasePath == null || !Files.isRegularFile(databasePath)) throw new IllegalArgumentException("Choose an existing SQLite database file.");
     }
 
     private static QueryExecutionWorkflow createExecutionWorkflow(Path workspaceDatabase,
@@ -96,4 +113,3 @@ public final class QueryWorkspaceService {
         );
     }
 }
-

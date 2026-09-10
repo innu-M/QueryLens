@@ -9,6 +9,7 @@ import java.sql.Connection;
 import java.sql.DriverManager;
 import java.sql.SQLException;
 import java.sql.Statement;
+import java.sql.ResultSet;
 
 public class DatabaseInitializer {
 
@@ -26,9 +27,24 @@ public class DatabaseInitializer {
                         statement.execute(sql);
                     }
                 }
+                addColumnIfMissing(connection, "comparison_sessions", "title",
+                        "ALTER TABLE comparison_sessions ADD COLUMN title TEXT NOT NULL DEFAULT ''");
             }
         } catch (IOException | SQLException exception) {
             throw new IllegalStateException("Could not prepare the QueryLens database.", exception);
+        }
+    }
+
+    private void addColumnIfMissing(Connection connection, String table, String column, String migration)
+            throws SQLException {
+        try (Statement statement = connection.createStatement();
+             ResultSet columns = statement.executeQuery("PRAGMA table_info(" + table + ")")) {
+            while (columns.next()) {
+                if (column.equalsIgnoreCase(columns.getString("name"))) return;
+            }
+        }
+        try (Statement statement = connection.createStatement()) {
+            statement.execute(migration);
         }
     }
 

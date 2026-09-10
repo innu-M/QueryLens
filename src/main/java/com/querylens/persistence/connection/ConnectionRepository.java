@@ -44,6 +44,34 @@ public final class ConnectionRepository extends AbstractWorkspaceRepository {
             throw new IllegalStateException("Could not load saved database connections.", exception);
         }
     }
-}
 
+    public SavedConnection update(long id, String displayName, Path databasePath) {
+        String sql = "UPDATE database_connections SET display_name = ?, database_path = ? WHERE id = ?";
+        Path absolutePath = databasePath.toAbsolutePath();
+        try (var connection = openConnection();
+             PreparedStatement statement = connection.prepareStatement(sql)) {
+            statement.setString(1, displayName.strip());
+            statement.setString(2, absolutePath.toString());
+            statement.setLong(3, id);
+            if (statement.executeUpdate() == 0) throw new IllegalArgumentException("Database connection not found.");
+            return new SavedConnection(id, displayName.strip(), absolutePath);
+        } catch (IllegalArgumentException exception) {
+            throw exception;
+        } catch (Exception exception) {
+            throw new IllegalStateException("Could not update this database connection.", exception);
+        }
+    }
+
+    public void delete(long id) {
+        try (var connection = openConnection();
+             PreparedStatement statement = connection.prepareStatement("DELETE FROM database_connections WHERE id = ?")) {
+            statement.setLong(1, id);
+            if (statement.executeUpdate() == 0) throw new IllegalArgumentException("Database connection not found.");
+        } catch (IllegalArgumentException exception) {
+            throw exception;
+        } catch (Exception exception) {
+            throw new IllegalStateException("Could not delete this database connection.", exception);
+        }
+    }
+}
 

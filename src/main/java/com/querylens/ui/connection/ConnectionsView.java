@@ -6,6 +6,7 @@ import javafx.collections.FXCollections;
 import javafx.geometry.Insets;
 import javafx.scene.control.Alert;
 import javafx.scene.control.Button;
+import javafx.scene.control.ButtonType;
 import javafx.scene.control.Label;
 import javafx.scene.control.ListView;
 import javafx.scene.control.TextField;
@@ -16,6 +17,7 @@ import javafx.stage.FileChooser;
 
 import java.io.File;
 import java.nio.file.Path;
+import java.util.Optional;
 
 public final class ConnectionsView extends VBox {
     private final QueryWorkspaceService service;
@@ -23,6 +25,8 @@ public final class ConnectionsView extends VBox {
     private final TextField name = new TextField();
     private final TextField path = new TextField();
     private final ListView<SavedConnection> connections = new ListView<>();
+    private final Button update = new Button("Update selected");
+    private final Button delete = new Button("Delete selected");
 
     public ConnectionsView(QueryWorkspaceService service, Runnable onConnectionSaved) {
         this.service = service;
@@ -38,6 +42,14 @@ public final class ConnectionsView extends VBox {
                 setText(empty || item == null ? null : item.displayName() + " — " + item.databasePath());
             }
         });
+        connections.getSelectionModel().selectedItemProperty().addListener((observable, previous, selected) -> {
+            update.setDisable(selected == null);
+            delete.setDisable(selected == null);
+            if (selected != null) {
+                name.setText(selected.displayName());
+                path.setText(selected.databasePath().toString());
+            }
+        });
         refresh();
     }
 
@@ -49,7 +61,14 @@ public final class ConnectionsView extends VBox {
         browse.setOnAction(event -> chooseDatabase());
         Button save = new Button("Save connection");
         save.setOnAction(event -> saveConnection());
-        return new VBox(8, new Label("Name"), name, new Label("Database"), new HBox(8, path, browse), save);
+        update.setDisable(true);
+        update.setOnAction(event -> updateConnection());
+        delete.setDisable(true);
+        delete.setOnAction(event -> deleteConnection());
+        Button clear = new Button("Clear selection");
+        clear.setOnAction(event -> clearSelection());
+        return new VBox(8, new Label("Name"), name, new Label("Database"),
+                new HBox(8, path, browse), new HBox(8, save, update, delete, clear));
     }
 
     private void chooseDatabase() {
@@ -62,13 +81,54 @@ public final class ConnectionsView extends VBox {
     private void saveConnection() {
         try {
             service.saveConnection(name.getText(), Path.of(path.getText().strip()));
-            name.clear();
-            path.clear();
+            clearSelection();
             refresh();
             onConnectionSaved.run();
         } catch (Exception exception) {
             showError(exception.getMessage());
         }
+    }
+
+    private void updateConnection() {
+        SavedConnection selected = connections.getSelectionModel().getSelectedItem();
+        if (selected == null) return;
+        try {
+            service.updateConnection(selected.id(), name.getText(), Path.of(path.getText().strip()));
+            clearSelection();
+            refresh();
+            onConnectionSaved.run();
+        } catch (Exception exception) {
+            showError(exception.getMessage());
+        }
+    }
+
+    private void deleteConnection() {
+        SavedConnection selected = connections.getSelectionModel().getSelectedItem();
+        if (selected == null) return;
+        Alert confirmation = new Alert(Alert.AlertType.CONFIRMATION,
+                "Delete the saved connection '" + selected.displayName()
+                        + "'? Existing query history will be kept.",
+                ButtonType.CANCEL, ButtonType.OK);
+        confirmation.setHeaderText("Delete saved connection");
+        Optional<ButtonType> response = confirmation.showAndWait();
+        if (response.isPresent() && response.get() == ButtonType.OK) {
+            try {
+                service.deleteConnection(selected.id());
+                clearSelection();
+                refresh();
+                onConnectionSaved.run();
+            } catch (Exception exception) {
+                showError(exception.getMessage());
+            }
+        }
+    }
+
+    private void clearSelection() {
+        connections.getSelectionModel().clearSelection();
+        name.clear();
+        path.clear();
+        update.setDisable(true);
+        delete.setDisable(true);
     }
 
     private void refresh() {
@@ -79,4 +139,3 @@ public final class ConnectionsView extends VBox {
         new Alert(Alert.AlertType.ERROR, message).showAndWait();
     }
 }
-

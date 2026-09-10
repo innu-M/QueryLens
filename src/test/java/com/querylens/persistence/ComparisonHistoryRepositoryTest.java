@@ -42,6 +42,7 @@ class ComparisonHistoryRepositoryTest {
         List<ComparisonSessionEntry> sessions = repository.findSessions("");
         assertEquals(1, sessions.size());
         assertEquals(sessionId, sessions.getFirst().id());
+        assertEquals("SELECT * FROM sailors", sessions.getFirst().title());
         assertEquals(2, sessions.getFirst().candidateCount());
         assertEquals("Projection rewrite", sessions.getFirst().winnerLabel());
         assertEquals(200, sessions.getFirst().originalMedianNs());
@@ -62,6 +63,16 @@ class ComparisonHistoryRepositoryTest {
         assertEquals(1, repository.findSessions("SAILORS").size());
         assertEquals(1, repository.findSessions("demo.db").size());
         assertTrue(repository.findSessions("boats").isEmpty());
+    }
+
+    @Test
+    void renamesAndSearchesComparisonSessions() {
+        long sessionId = repository.save(comparison("SELECT * FROM sailors"));
+
+        repository.rename(sessionId, "Sailor projection benchmark");
+
+        assertEquals("Sailor projection benchmark", repository.findSessions("").getFirst().title());
+        assertEquals(1, repository.findSessions("PROJECTION BENCHMARK").size());
     }
 
     @Test
